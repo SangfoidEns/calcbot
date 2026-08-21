@@ -11,7 +11,13 @@ import {
   loadGlobalArchive,
   clearGlobalArchive
 } from './store.js';
-import { filterRecordsByPeriod, groupRecordsByTimeSlot, getTopClients } from './analytics.js';
+import { 
+  filterRecordsByPeriod, 
+  groupRecordsByTimeSlot, 
+  getTopClients, 
+  calculateWeeklyHeatmap, 
+  safeParseDate 
+} from './analytics.js';
 import { getTelegramUser } from './telegram.js';
 
 let currentUser = null;
@@ -432,18 +438,22 @@ function renderAnalyticsPage() {
 
   const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
 
-  // Сортування архівних записів: спочатку за СОРТОМ (Категорією), потім за ДАТОЮ
+  // Сортування архівних записів за категорією та датою
   const sortedArchive = [...filtered].sort((a, b) => {
     if (a.category !== b.category) {
       return a.category.localeCompare(b.category);
     }
-    return new Date(a.parsedDateObj) - new Date(b.parsedDateObj);
+    return safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj);
   });
 
   renderArchiveTable(sortedArchive);
 
+  // Рендеримо теплову карту
+  renderHeatmap();
+
   if (typeof Chart === 'undefined') return;
 
+  // 1. ВЕРИФІКОВАНЕ ГРУПУВАННЯ ДЛЯ ТИЖНЯ / МІСЯЦЯ
   const grouped = groupRecordsByTimeSlot(filtered, currentPeriod);
   const labels = Object.keys(grouped);
   const revenues = labels.map(k => grouped[k].revenue);
@@ -472,7 +482,15 @@ function renderAnalyticsPage() {
           tension: 0.3
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
+        }
+      }
     });
   }
 
@@ -488,26 +506,41 @@ function renderAnalyticsPage() {
           backgroundColor: '#9D00FF'
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
+        }
+      }
     });
   }
 
+  // 2. БЕЗПЕЧНИЙ БУЛЬБАШКОВИЙ ГРАФІК (FIXED BUBBLE CHART)
   if (canvasB) {
     const ctxB = canvasB.getContext('2d');
-    const bubbleData = filtered.map(r => {
-      const d = new Date(r.parsedDateObj);
-      return {
-        x: d.getHours() + (d.getMinutes() / 60),
-        y: r.eurPaid,
-        r: Math.min(Math.max(r.exactGramm * 1.5, 4), 25)
-      };
-    });
+
+    const bubbleData = filtered
+      .map(r => {
+        const d = safeParseDate(r.parsedDateObj);
+        const hours = d.getHours() + (d.getMinutes() / 60);
+        const money = r.eurPaid || 0;
+        const weight = r.exactGramm || 0;
+
+        // Запобігаємо радиусу <= 0
+        const radius = Math.min(Math.max(weight * 1.2, 3), 20);
+
+        return { x: parseFloat(hours.toFixed(2)), y: money, r: radius };
+      })
+      .filter(item => !isNaN(item.x) && !isNaN(item.y)); // Валідація координат
 
     chartBubbleInstance = new Chart(ctxB, {
       type: 'bubble',
       data: {
         datasets: [{
-          label: 'Угоди (X: Година, Y: Оплата, R: Вага)',
+          label: 'Угоди (X: Година, Y: Оплата €, R: Вага)',
           data: bubbleData,
           backgroundColor: 'rgba(0, 240, 255, 0.4)',
           borderColor: '#00F0FF',
@@ -517,12 +550,78 @@ function renderAnalyticsPage() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
         scales: {
-          x: { title: { display: true, text: 'Година доби (0-24h)' }, min: 0, max: 24 },
-          y: { title: { display: true, text: 'Сума (€)' }, beginAtZero: true }
+          x: { 
+            title: { display: true, text: 'Година доби (0-24h)', color: '#9ca3af' }, 
+            min: 0, 
+            max: 24,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          },
+          y: { 
+            title: { display: true, text: 'Сума (€)', color: '#9ca3af' }, 
+            beginAtZero: true,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          }
         }
       }
     });
+  }
+}
+
+// Генератор HTML CSS-Grid Heatmap
+function renderHeatmap() {
+  const container = document.getElementById('heatmapGrid');
+  const selectEl = document.getElementById('heatmapMonthSelect');
+  if (!container) return;
+
+  const monthVal = selectEl ? selectEl.value : 'all';
+  const { matrix, maxVal } = calculateWeeklyHeatmap(globalArchiveRecords, monthVal);
+
+  const dayLabels = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
+  // Header: Години (0..23)
+  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1">`;
+  html += `<div></div>`;
+  for (let h = 0; h < 24; h++) {
+    html += `<div>${h}h</div>`;
+  }
+  html += `</div>`;
+
+  // Рядки: Дні тижня
+  dayLabels.forEach((dayName, dayIdx) => {
+    html += `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center">`;
+    html += `<div class="text-gray-300 font-bold text-right pr-2">${dayName}</div>`;
+
+    for (let h = 0; h < 24; h++) {
+      const val = matrix[dayIdx][h];
+      const intensity = maxVal > 0 ? (val / maxVal) : 0;
+      const alpha = val > 0 ? Math.max(intensity, 0.15).toFixed(2) : 0.03;
+
+      const bgColor = val > 0 
+        ? `rgba(0, 255, 136, ${alpha})` 
+        : `rgba(31, 41, 55, 0.3)`;
+
+      const textColor = intensity > 0.5 ? '#000' : '#fff';
+
+      html += `
+        <div class="h-7 rounded flex items-center justify-center text-[9px] transition hover:scale-110 cursor-pointer border border-brandBorder/30"
+             style="background-color: ${bgColor}; color: ${textColor};"
+             title="${dayName}, ${h}:00 - Виручка: ${val.toFixed(1)} €">
+          ${val > 0 ? `${Math.round(val)}` : ''}
+        </div>
+      `;
+    }
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+
+  if (selectEl && !selectEl.dataset.initialized) {
+    selectEl.addEventListener('change', () => renderHeatmap());
+    selectEl.dataset.initialized = 'true';
   }
 }
 
@@ -565,7 +664,6 @@ function exportArchiveToTxt() {
     return;
   }
 
-  // Групуємо записи за Категоріями (Сортами)
   const groupedByCat = {};
   filtered.forEach(r => {
     if (!groupedByCat[r.category]) {
@@ -579,8 +677,7 @@ function exportArchiveToTxt() {
   Object.keys(groupedByCat).forEach(cat => {
     txtLines.push(`| name | gramm | € | time |`);
 
-    // Сортуємо записи категорії за датою
-    groupedByCat[cat].sort((a, b) => new Date(a.parsedDateObj) - new Date(b.parsedDateObj));
+    groupedByCat[cat].sort((a, b) => safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj));
 
     groupedByCat[cat].forEach(r => {
       txtLines.push(`| ${r.clientName} | ${r.rawGramm} | ${r.rawMoney} | ${r.timeStr} |`);
@@ -590,7 +687,7 @@ function exportArchiveToTxt() {
   const txtContent = txtLines.join('\n');
   const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  
+
   const link = document.createElement('a');
   link.href = url;
   link.download = `HMS2_Report_${currentPeriod}_${new Date().toISOString().slice(0, 10)}.txt`;
