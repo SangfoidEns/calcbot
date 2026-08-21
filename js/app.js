@@ -56,36 +56,41 @@ function getCategoryColor(categoryName) {
   return categoryColorMap[categoryName];
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Авторизація користувача Telegram
   initUserSession();
 
-  purchases = loadPurchases();
-  myExpenses = loadMyExpenses();
-  globalArchiveRecords = loadGlobalArchive();
+  // 2. Асинхронне завантаження з Telegram CloudStorage
+  purchases = await loadPurchases();
+  myExpenses = await loadMyExpenses();
+  globalArchiveRecords = await loadGlobalArchive();
 
+  const rawInputEl = document.getElementById('rawInput');
+  if (rawInputEl) {
+    rawInputEl.value = await loadRawLogs();
+  }
+
+  // 3. Ініціалізація UI
   initNavigation();
   initPurchasesUI();
   initQuickButtons();
   initMyExpensesEvents();
 
-  const rawInputEl = document.getElementById('rawInput');
-  if (rawInputEl) {
-    rawInputEl.value = loadRawLogs();
-  }
+  // 4. Первинний розрахунок
+  await processCurrentInput();
 
-  processCurrentInput();
-
+  // Event Listeners
   const btnCalc = document.getElementById('btnCalculate');
-  if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
+  if (btnCalc) btnCalc.addEventListener('click', async () => await processCurrentInput());
 
   const btnAddPur = document.getElementById('btnAddPurchase');
   if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
 
   const btnClearArch = document.getElementById('btnClearArchive');
   if (btnClearArch) {
-    btnClearArch.addEventListener('click', () => {
-      if (confirm('Дійсно очистити весь глобальний архів?')) {
-        clearGlobalArchive();
+    btnClearArch.addEventListener('click', async () => {
+      if (confirm('Дійсно очистити весь хмарний архів?')) {
+        await clearGlobalArchive();
         globalArchiveRecords = [];
         renderAnalyticsPage();
       }
@@ -191,7 +196,7 @@ function initMyExpensesEvents() {
   if (btnExp) btnExp.addEventListener('click', () => addMyExpenseItem('expense'));
 }
 
-function addMyExpenseItem(type) {
+async function addMyExpenseItem(type) {
   const noteInput = document.getElementById('myExpenseNote');
   const amountInput = document.getElementById('myExpenseAmount');
   if (!noteInput || !amountInput) return;
@@ -208,10 +213,10 @@ function addMyExpenseItem(type) {
     type
   });
 
-  saveMyExpenses(myExpenses);
+  await saveMyExpenses(myExpenses);
   noteInput.value = '';
   amountInput.value = '';
-  processCurrentInput();
+  await processCurrentInput();
 }
 
 function renderMyExpensesList() {
@@ -239,34 +244,39 @@ function renderMyExpensesList() {
   if (disp) disp.innerText = `${totalCustom.toFixed(1)} €`;
 
   document.querySelectorAll('.btn-del-expense').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
-      saveMyExpenses(myExpenses);
-      processCurrentInput();
+      await saveMyExpenses(myExpenses);
+      await processCurrentInput();
     });
   });
 }
 
-function processCurrentInput() {
+async function processCurrentInput() {
   const rawInput = document.getElementById('rawInput');
   const rawText = rawInput ? rawInput.value : '';
-  saveRawLogs(rawText);
+  await saveRawLogs(rawText);
 
   currentRecordsBatch = parseLogs(rawText);
 
   if (currentRecordsBatch.length > 0) {
-    globalArchiveRecords = saveGlobalArchive(currentRecordsBatch);
+    globalArchiveRecords = await saveGlobalArchive(currentRecordsBatch);
   } else {
-    globalArchiveRecords = loadGlobalArchive();
+    globalArchiveRecords = await loadGlobalArchive();
   }
 
+  let needsPurchaseSave = false;
   currentRecordsBatch.forEach(r => {
     if (r.category && r.category !== 'UNCATEGORIZED' && purchases[r.category] === undefined) {
       purchases[r.category] = 600;
-      savePurchases(purchases);
+      needsPurchaseSave = true;
     }
   });
+
+  if (needsPurchaseSave) {
+    await savePurchases(purchases);
+  }
 
   initPurchasesUI();
 
@@ -379,7 +389,7 @@ function initPurchasesUI() {
   `).join('');
 }
 
-function handleAddPurchase() {
+async function handleAddPurchase() {
   const nameInput = document.getElementById('newCatName');
   const costInput = document.getElementById('newCatCost');
   if (!nameInput || !costInput) return;
@@ -389,9 +399,9 @@ function handleAddPurchase() {
 
   if (name && !isNaN(cost) && cost > 0) {
     purchases[name] = cost;
-    savePurchases(purchases);
+    await savePurchases(purchases);
     initPurchasesUI();
-    processCurrentInput();
+    await processCurrentInput();
     nameInput.value = '';
     costInput.value = '';
   }
@@ -442,9 +452,6 @@ function renderCurrentTable(records) {
   }).join('');
 }
 
-// -------------------------------------------------------------
-// PAGE 2: ANALYTICS RENDER
-// -------------------------------------------------------------
 function renderAnalyticsPage() {
   const archiveTotalCountEl = document.getElementById('archiveTotalCount');
   if (archiveTotalCountEl) archiveTotalCountEl.innerText = globalArchiveRecords.length;
@@ -496,7 +503,6 @@ function renderAnalyticsPage() {
     });
   }
 
-  // BUBBLE CHART WITH READABLE TOOLTIPS
   if (canvasB) {
     const bubbleData = filtered.map(r => {
       const d = safeParseDate(r.parsedDateObj);
@@ -620,9 +626,6 @@ function renderArchiveTable(records) {
   }).join('');
 }
 
-// -------------------------------------------------------------
-// PAGE 3: FORECASTING RENDER
-// -------------------------------------------------------------
 function renderForecastPage() {
   const records = globalArchiveRecords;
 
@@ -658,7 +661,6 @@ function renderForecastPage() {
   const canvasTom = document.getElementById('chartForecastTomorrow');
   const canvasWk = document.getElementById('chartForecastWeek');
 
-  // Chart 1: Tomorrow Hourly Forecast
   if (canvasTom) {
     chartFcTomorrowInstance = new Chart(canvasTom.getContext('2d'), {
       type: 'line',
@@ -684,7 +686,6 @@ function renderForecastPage() {
     });
   }
 
-  // Chart 2: Week Daily Forecast
   if (canvasWk) {
     chartFcWeekInstance = new Chart(canvasWk.getContext('2d'), {
       type: 'bar',
