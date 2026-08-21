@@ -57,3 +57,41 @@ export function loadMyExpenses() {
     return [];
   }
 }
+
+// Збереження глобального архіву з MERGE за унікальним ID
+export function saveGlobalArchive(newRecords) {
+  try {
+    const existingArchive = loadGlobalArchive();
+    const map = new Map();
+
+    // Завантажуємо існуючі записи
+    existingArchive.forEach(item => map.set(item.id, item));
+
+    // Додаємо або оновлюємо нові записи (дедуплікація)
+    newRecords.forEach(item => map.set(item.id, item));
+
+    const updatedArchive = Array.from(map.values());
+    localStorage.setItem(getScopedKey('global_archive_v2'), JSON.stringify(updatedArchive));
+    return updatedArchive;
+  } catch (e) {
+    console.error('Archive Storage Error:', e);
+    return [];
+  }
+}
+
+export function loadGlobalArchive() {
+  try {
+    const raw = localStorage.getItem(getScopedKey('global_archive_v2'));
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function clearGlobalArchive() {
+  try {
+    localStorage.removeItem(getScopedKey('global_archive_v2'));
+  } catch (e) {
+    console.error(e);
+  }
+}
