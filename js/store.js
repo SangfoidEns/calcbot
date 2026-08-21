@@ -1,12 +1,16 @@
-const KEYS = {
-  PURCHASES: 'hms2_purchases_v2',
-  RAW_LOGS: 'hms2_raw_logs_v2',
-  MY_EXPENSES: 'hms2_my_expenses_v2'
-};
+let currentUserId = 'default';
+
+export function setCurrentUserId(userId) {
+  currentUserId = userId || 'default';
+}
+
+function getScopedKey(key) {
+  return `hms2_${currentUserId}_${key}`;
+}
 
 export function savePurchases(data) {
   try {
-    localStorage.setItem(KEYS.PURCHASES, JSON.stringify(data));
+    localStorage.setItem(getScopedKey('purchases_v2'), JSON.stringify(data));
   } catch (e) {
     console.error('Storage error:', e);
   }
@@ -14,7 +18,7 @@ export function savePurchases(data) {
 
 export function loadPurchases() {
   try {
-    const raw = localStorage.getItem(KEYS.PURCHASES);
+    const raw = localStorage.getItem(getScopedKey('purchases_v2'));
     return raw ? JSON.parse(raw) : {};
   } catch (e) {
     return {};
@@ -23,7 +27,7 @@ export function loadPurchases() {
 
 export function saveRawLogs(text) {
   try {
-    localStorage.setItem(KEYS.RAW_LOGS, text);
+    localStorage.setItem(getScopedKey('raw_logs_v2'), text);
   } catch (e) {
     console.error('Storage error:', e);
   }
@@ -31,7 +35,7 @@ export function saveRawLogs(text) {
 
 export function loadRawLogs() {
   try {
-    return localStorage.getItem(KEYS.RAW_LOGS) || '';
+    return localStorage.getItem(getScopedKey('raw_logs_v2')) || '';
   } catch (e) {
     return '';
   }
@@ -39,7 +43,7 @@ export function loadRawLogs() {
 
 export function saveMyExpenses(data) {
   try {
-    localStorage.setItem(KEYS.MY_EXPENSES, JSON.stringify(data));
+    localStorage.setItem(getScopedKey('my_expenses_v2'), JSON.stringify(data));
   } catch (e) {
     console.error('Storage error:', e);
   }
@@ -47,7 +51,7 @@ export function saveMyExpenses(data) {
 
 export function loadMyExpenses() {
   try {
-    const raw = localStorage.getItem(KEYS.MY_EXPENSES);
+    const raw = localStorage.getItem(getScopedKey('my_expenses_v2'));
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     return [];
