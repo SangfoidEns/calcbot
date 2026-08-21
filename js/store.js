@@ -14,7 +14,7 @@ function getStorageKey(key) {
 }
 
 /**
- * Беспечне асинхронне читання
+ * Безпечне асинхронне читання
  */
 export async function loadData(key, defaultValue = null) {
   const storageKey = getStorageKey(key);
