@@ -19,7 +19,7 @@ export function filterRecordsByPeriod(records, period) {
   });
 }
 
-// Корректне хронологічне групування для лінійних та стовпчастих графіків
+// Хронологічне групування
 export function groupRecordsByTimeSlot(records, period) {
   const grouped = {};
 
@@ -46,7 +46,6 @@ export function groupRecordsByTimeSlot(records, period) {
     grouped[key].weight += (r.exactGramm || 0);
   });
 
-  // Сортуємо ключі строго за хронологією
   const sortedKeys = Object.keys(grouped).sort((a, b) => grouped[a].timestamp - grouped[b].timestamp);
 
   const result = {};
