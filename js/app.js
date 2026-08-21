@@ -1,25 +1,54 @@
 import { parseLogs } from './parser.js';
-import { setCurrentUserId, savePurchases, loadPurchases, saveRawLogs, loadRawLogs, saveMyExpenses, loadMyExpenses } from './store.js';
+import { 
+  setCurrentUserId, 
+  savePurchases, 
+  loadPurchases, 
+  saveRawLogs, 
+  loadRawLogs, 
+  saveMyExpenses, 
+  loadMyExpenses,
+  saveGlobalArchive,
+  loadGlobalArchive,
+  clearGlobalArchive
+} from './store.js';
 import { filterRecordsByPeriod, groupRecordsByTimeSlot, getTopClients } from './analytics.js';
 import { getTelegramUser } from './telegram.js';
 
 let currentUser = null;
 let purchases = {};
 let myExpenses = [];
-let parsedRecordsGlobal = [];
+let currentRecordsBatch = [];
+let globalArchiveRecords = [];
 let currentPeriod = 'week';
 
 let chartRevenueInstance = null;
 let chartWeightInstance = null;
 let chartBubbleInstance = null;
 
+// Генератор кольорів для сортів (Category Color Map)
+const categoryColorMap = {};
+function getCategoryColor(categoryName) {
+  if (!categoryColorMap[categoryName]) {
+    let hash = 0;
+    for (let i = 0; i < categoryName.length; i++) {
+      hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    categoryColorMap[categoryName] = {
+      bg: `hsla(${hue}, 85%, 60%, 0.15)`,
+      border: `hsla(${hue}, 85%, 60%, 0.5)`,
+      text: `hsl(${hue}, 90%, 65%)`
+    };
+  }
+  return categoryColorMap[categoryName];
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Авторизація через Telegram SDK
   initUserSession();
 
-  // 2. Завантаження збережених даних для конкретного Telegram ID
   purchases = loadPurchases();
   myExpenses = loadMyExpenses();
+  globalArchiveRecords = loadGlobalArchive();
 
   initNavigation();
   initPurchasesUI();
@@ -31,20 +60,34 @@ document.addEventListener('DOMContentLoaded', () => {
     rawInputEl.value = loadRawLogs();
   }
 
-  processAllData();
+  processCurrentInput();
 
   const btnCalc = document.getElementById('btnCalculate');
-  if (btnCalc) btnCalc.addEventListener('click', processAllData);
+  if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
 
   const btnAddPur = document.getElementById('btnAddPurchase');
   if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
 
+  const btnClearArch = document.getElementById('btnClearArchive');
+  if (btnClearArch) {
+    btnClearArch.addEventListener('click', () => {
+      if (confirm('Дійсно очистити весь глобальний архів?')) {
+        clearGlobalArchive();
+        globalArchiveRecords = [];
+        renderAnalyticsPage();
+      }
+    });
+  }
+
+  const btnExport = document.getElementById('btnExportTxt');
+  if (btnExport) btnExport.addEventListener('click', exportArchiveToTxt);
+
   document.querySelectorAll('.btn-period').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.btn-period').forEach(b => {
-        b.className = 'btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-brandDark border border-brandBorder text-gray-400 hover:text-white transition';
+        b.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
       });
-      e.target.className = 'btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+      e.target.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
       currentPeriod = e.target.getAttribute('data-period');
       renderAnalyticsPage();
     });
@@ -53,11 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initUserSession() {
   currentUser = getTelegramUser();
-  
-  // Встановлюємо ID для ізоляції даних у store
   setCurrentUserId(currentUser.id);
 
-  // Оновлюємо UI профілю
   const userNameEl = document.getElementById('userName');
   const userHandleEl = document.getElementById('userHandle');
   const userAvatarEl = document.getElementById('userAvatar');
@@ -69,8 +109,7 @@ function initUserSession() {
     if (currentUser.photoUrl) {
       userAvatarEl.innerHTML = `<img src="${currentUser.photoUrl}" class="w-full h-full rounded-full object-cover">`;
     } else {
-      const initial = currentUser.firstName.charAt(0).toUpperCase() || 'U';
-      userAvatarEl.innerText = initial;
+      userAvatarEl.innerText = (currentUser.firstName.charAt(0) || 'U').toUpperCase();
     }
   }
 }
@@ -138,7 +177,7 @@ function addMyExpenseItem(type) {
   saveMyExpenses(myExpenses);
   noteInput.value = '';
   amountInput.value = '';
-  processAllData();
+  processCurrentInput();
 }
 
 function renderMyExpensesList() {
@@ -170,19 +209,27 @@ function renderMyExpensesList() {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
       saveMyExpenses(myExpenses);
-      processAllData();
+      processCurrentInput();
     });
   });
 }
 
-function processAllData() {
+function processCurrentInput() {
   const rawInput = document.getElementById('rawInput');
   const rawText = rawInput ? rawInput.value : '';
   saveRawLogs(rawText);
 
-  parsedRecordsGlobal = parseLogs(rawText);
+  // 1. Парсимо ТІЛЬКИ поточний блок
+  currentRecordsBatch = parseLogs(rawText);
 
-  parsedRecordsGlobal.forEach(r => {
+  // 2. Мержимо у глобальний архів без дублікатів
+  if (currentRecordsBatch.length > 0) {
+    globalArchiveRecords = saveGlobalArchive(currentRecordsBatch);
+  } else {
+    globalArchiveRecords = loadGlobalArchive();
+  }
+
+  currentRecordsBatch.forEach(r => {
     if (r.category && r.category !== 'UNCATEGORIZED' && purchases[r.category] === undefined) {
       purchases[r.category] = 600;
       savePurchases(purchases);
@@ -191,6 +238,7 @@ function processAllData() {
 
   initPurchasesUI();
 
+  // Розрахунок KPI тільки для Поточного Логу (Перша Сторінка)
   let totalRevenue = 0;
   let totalCash = 0;
   let totalCard = 0;
@@ -204,7 +252,7 @@ function processAllData() {
 
   const clientDebtsMap = {};
 
-  parsedRecordsGlobal.forEach(r => {
+  currentRecordsBatch.forEach(r => {
     totalRevenue += r.eurPaid;
     if (r.isCard) {
       totalCard += r.eurPaid;
@@ -213,16 +261,14 @@ function processAllData() {
     }
 
     totalExactWeight += r.exactGramm;
-    
-    const bonusGramm = r.bonusGramm;
-    totalBonusWeight += bonusGramm;
+    totalBonusWeight += r.bonusGramm;
 
     const costFor100g = purchases[r.category] || 0;
     const costPerExactGram = costFor100g / 110; 
     const costPerRawGram = costFor100g / 100;
 
     const baseCost = (r.baseGramm * 1.1) * costPerExactGram;
-    const bonusCost = bonusGramm * costPerRawGram;
+    const bonusCost = r.bonusGramm * costPerRawGram;
 
     totalCostOfGoods += (baseCost + bonusCost);
     totalBonusCost += bonusCost;
@@ -240,9 +286,7 @@ function processAllData() {
   let totalActiveDebt = 0;
   Object.keys(clientDebtsMap).forEach(client => {
     const netDebt = clientDebtsMap[client].newDebt - clientDebtsMap[client].repaidDebt;
-    if (netDebt > 0) {
-      totalActiveDebt += netDebt;
-    }
+    if (netDebt > 0) totalActiveDebt += netDebt;
   });
 
   const pureMyExpenses = myExpenses
@@ -251,7 +295,6 @@ function processAllData() {
 
   const netProfit = totalRevenue - totalCostOfGoods;
   const factNetProfit = netProfit - pureMyExpenses;
-
   const factReceived = totalRevenue - totalNewDebts + totalRepaidDebts - pureMyExpenses;
 
   const setTxt = (id, txt) => {
@@ -269,7 +312,7 @@ function processAllData() {
   setTxt('kpiActiveDebt', `${totalActiveDebt.toFixed(1)} €`);
   setTxt('kpiExactWeight', `${totalExactWeight.toFixed(2)} г`);
   setTxt('kpiBonusWeight', `${totalBonusWeight.toFixed(2)} г`);
-  setTxt('kpiDeals', parsedRecordsGlobal.length);
+  setTxt('kpiDeals', currentRecordsBatch.length);
 
   setTxt('myCardTotal', `${totalCard.toFixed(1)} €`);
   setTxt('myBonusCostTotal', `${totalBonusCost.toFixed(1)} €`);
@@ -277,7 +320,7 @@ function processAllData() {
   renderTopClients();
   renderMyExpensesList();
   renderDebts(clientDebtsMap);
-  renderTable(parsedRecordsGlobal);
+  renderCurrentTable(currentRecordsBatch);
 
   const pageAnalytics = document.getElementById('pageAnalytics');
   if (pageAnalytics && !pageAnalytics.classList.contains('hidden')) {
@@ -289,9 +332,9 @@ function renderTopClients() {
   const container = document.getElementById('topClientsList');
   if (!container) return;
 
-  const topList = getTopClients(parsedRecordsGlobal, 3);
+  const topList = getTopClients(currentRecordsBatch, 3);
   if (topList.length === 0) {
-    container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по клієнтах</p>';
+    container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по поточній таблиці</p>';
     return;
   }
 
@@ -332,7 +375,7 @@ function handleAddPurchase() {
     purchases[name] = cost;
     savePurchases(purchases);
     initPurchasesUI();
-    processAllData();
+    processCurrentInput();
     nameInput.value = '';
     costInput.value = '';
   }
@@ -362,30 +405,46 @@ function renderDebts(debtsMap) {
   repaidContainer.innerHTML = repaidHtml || '<p class="text-gray-500">Немає погашень</p>';
 }
 
-function renderTable(records) {
+function renderCurrentTable(records) {
   const tbody = document.getElementById('recordsTableBody');
   if (!tbody) return;
 
-  tbody.innerHTML = records.map(r => `
-    <tr class="hover:bg-brandDark/40 transition">
-      <td class="p-2 font-bold text-neonGreen">${r.category}</td>
-      <td class="p-2 text-gray-200">${r.clientName}</td>
-      <td class="p-2 font-mono">${r.baseGramm} ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
-      <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
-      <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
-      <td class="p-2 font-bold">${r.eurPaid} €</td>
-      <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
-      <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = records.map(r => {
+    const color = getCategoryColor(r.category);
+    return `
+      <tr class="hover:bg-brandDark/40 transition">
+        <td class="p-2 font-bold" style="color: ${color.text}">${r.category}</td>
+        <td class="p-2 text-gray-200">${r.clientName}</td>
+        <td class="p-2 font-mono">${r.baseGramm} ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
+        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
+        <td class="p-2 font-bold">${r.eurPaid} €</td>
+        <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
+        <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function renderAnalyticsPage() {
+  const archiveTotalCountEl = document.getElementById('archiveTotalCount');
+  if (archiveTotalCountEl) archiveTotalCountEl.innerText = globalArchiveRecords.length;
+
+  const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
+
+  // Сортування архівних записів: спочатку за СОРТОМ (Категорією), потім за ДАТОЮ
+  const sortedArchive = [...filtered].sort((a, b) => {
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category);
+    }
+    return new Date(a.parsedDateObj) - new Date(b.parsedDateObj);
+  });
+
+  renderArchiveTable(sortedArchive);
+
   if (typeof Chart === 'undefined') return;
 
-  const filtered = filterRecordsByPeriod(parsedRecordsGlobal, currentPeriod);
   const grouped = groupRecordsByTimeSlot(filtered, currentPeriod);
-
   const labels = Object.keys(grouped);
   const revenues = labels.map(k => grouped[k].revenue);
   const weights = labels.map(k => grouped[k].weight);
@@ -465,4 +524,78 @@ function renderAnalyticsPage() {
       }
     });
   }
+}
+
+function renderArchiveTable(records) {
+  const tbody = document.getElementById('archiveTableBody');
+  if (!tbody) return;
+
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Архів порожній за цей період</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = records.map(r => {
+    const color = getCategoryColor(r.category);
+    return `
+      <tr class="hover:bg-brandDark/40 transition border-b border-brandBorder/50">
+        <td class="p-2 font-bold" style="color: ${color.text}">
+          <span class="px-2 py-0.5 rounded text-[10px]" style="background: ${color.bg}; border: 1px solid ${color.border}">
+            ${r.category}
+          </span>
+        </td>
+        <td class="p-2 text-gray-200">${r.clientName}</td>
+        <td class="p-2 font-mono">${r.rawGramm}</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
+        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
+        <td class="p-2 font-bold">${r.eurPaid} €</td>
+        <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
+        <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Генератор Текстового Файлу для Друку
+function exportArchiveToTxt() {
+  const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
+
+  if (filtered.length === 0) {
+    alert('Немає даних у цьому періоді для експорту.');
+    return;
+  }
+
+  // Групуємо записи за Категоріями (Сортами)
+  const groupedByCat = {};
+  filtered.forEach(r => {
+    if (!groupedByCat[r.category]) {
+      groupedByCat[r.category] = [];
+    }
+    groupedByCat[r.category].push(r);
+  });
+
+  let txtLines = [];
+
+  Object.keys(groupedByCat).forEach(cat => {
+    txtLines.push(`| name | gramm | € | time |`);
+
+    // Сортуємо записи категорії за датою
+    groupedByCat[cat].sort((a, b) => new Date(a.parsedDateObj) - new Date(b.parsedDateObj));
+
+    groupedByCat[cat].forEach(r => {
+      txtLines.push(`| ${r.clientName} | ${r.rawGramm} | ${r.rawMoney} | ${r.timeStr} |`);
+    });
+  });
+
+  const txtContent = txtLines.join('\n');
+  const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `HMS2_Report_${currentPeriod}_${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
