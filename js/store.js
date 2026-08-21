@@ -1,11 +1,7 @@
-/**
- * Safe LocalStorage Storage Layer
- */
-
 const KEYS = {
-  PURCHASES: 'app_purchases_v2',
-  RAW_LOGS: 'app_raw_logs_v2',
-  MY_EXPENSES: 'app_my_expenses_v2'
+  PURCHASES: 'hms2_purchases_v2',
+  RAW_LOGS: 'hms2_raw_logs_v2',
+  MY_EXPENSES: 'hms2_my_expenses_v2'
 };
 
 export function savePurchases(data) {
