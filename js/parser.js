@@ -88,6 +88,17 @@ export function parseRecordDateTime(timeStr) {
   return new Date(year, month, day, hour, minute);
 }
 
+// Простий детермінований хеш для дедуплікації
+function generateDedupeHash(cat, client, gramm, money, time) {
+  const raw = `${cat.trim().toLowerCase()}_${client.trim().toLowerCase()}_${gramm.trim()}_${money.trim()}_${time.trim()}`;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  return `rec_${Math.abs(hash)}`;
+}
+
 export function parseLogs(rawText) {
   if (!rawText) return [];
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l !== '');
@@ -119,9 +130,10 @@ export function parseLogs(rawText) {
         const parsedDateObj = parseRecordDateTime(timeStr);
 
         const exactGramm = (weightData.baseGramm * 1.1) + weightData.bonusGramm;
+        const dedupeId = generateDedupeHash(currentCategory, clientName, rawGramm, rawMoney, timeStr);
 
         records.push({
-          id: `${parsedDateObj.getTime()}_${Math.random().toString(36).substr(2, 5)}`,
+          id: dedupeId,
           category: currentCategory,
           clientName,
           rawGramm,
@@ -136,7 +148,7 @@ export function parseLogs(rawText) {
           debtRepaid: moneyData.debtRepaid,
           rawDebtText: moneyData.rawDebtText,
           timeStr,
-          parsedDateObj
+          parsedDateObj: parsedDateObj.toISOString()
         });
 
         i += 4;
