@@ -6,20 +6,9 @@
   <title>HMS2 Shopping List</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: '#00f0ff',
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="./styles/main.css">
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen pb-12 antialiased selection:bg-cyan-500 selection:text-white">
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12 antialiased">
 
   <!-- Header Section -->
   <header class="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4">
@@ -37,39 +26,41 @@
     </div>
   </header>
 
-  <!-- Main Container -->
   <main class="max-w-md mx-auto p-4 space-y-6">
 
+    <!-- Analytics Dashboard Widget -->
+    <section id="analyticsStats"></section>
+
     <!-- Form Section -->
-    <section class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 shadow-xl backdrop-blur-sm">
+    <section class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 shadow-xl backdrop-blur-sm space-y-3">
       <form id="addPurchaseForm" class="flex gap-2">
         <input 
           type="text" 
           id="purchaseInput" 
-          placeholder="Що потрібно купити?..." 
+          placeholder="Наприклад: Молоко 2л терміново..." 
           required
           class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
         />
-        <button 
-          type="submit" 
-          class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-4 py-2.5 rounded-lg text-sm transition-all active:scale-95 touch-manipulation flex items-center gap-1 shrink-0"
-        >
-          <span>Додати</span>
+        <button type="submit" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-4 py-2.5 rounded-lg text-sm transition-all active:scale-95">
+          Додати
         </button>
       </form>
+
+      <!-- Forecast AI Recommendations -->
+      <div>
+        <p class="text-[10px] uppercase font-semibold text-gray-400 mb-1.5">Прогноз покупок (Smart Forecast):</p>
+        <div id="forecastList" class="flex flex-wrap gap-1.5"></div>
+      </div>
     </section>
 
     <!-- List Section -->
     <section>
       <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3 px-1">Список покупок</h2>
-      <div id="purchasesList" class="space-y-2">
-        <p class="text-center text-gray-400 py-4 animate-pulse">Завантаження...</p>
-      </div>
+      <div id="purchasesList" class="space-y-2"></div>
     </section>
 
   </main>
 
-  <!-- App Entry Point -->
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
