@@ -58,15 +58,15 @@
 
       <nav class="flex gap-2">
         <button id="tabDashboard" class="px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
-          Дашборд
+          Дашборд (Поточна таблиця)
         </button>
         <button id="tabAnalytics" class="px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
-          Аналітика
+          Архів & Аналітика
         </button>
       </nav>
     </header>
 
-    <!-- DASHBOARD PAGE -->
+    <!-- PAGE 1: DASHBOARD (Current Active Batch) -->
     <div id="pageDashboard" class="space-y-6">
 
       <!-- KPI Grid -->
@@ -115,10 +115,10 @@
           
           <!-- RAW LOG INPUT -->
           <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-3">
-            <h2 class="text-xs font-bold uppercase text-gray-400">Ввід текстового логу</h2>
+            <h2 class="text-xs font-bold uppercase text-gray-400">Ввід текстового логу (Поточний блок)</h2>
             <textarea id="rawInput" rows="8" placeholder="Встав сюди журнал..." class="w-full bg-brandDark p-3 rounded-xl border border-brandBorder text-xs font-mono focus:border-neonGreen focus:outline-none transition"></textarea>
             <button id="btnCalculate" class="w-full py-2.5 bg-neonGreen/20 text-neonGreen border border-neonGreen/40 rounded-xl font-bold text-xs uppercase hover:bg-neonGreen/30 transition">
-              Розрахувати
+              Обробити та зберегти в Архів
             </button>
           </div>
 
@@ -178,13 +178,13 @@
 
         </div>
 
-        <!-- Right Column: Top Clients, Debts & Table -->
+        <!-- Right Column: Top Clients, Debts & Current Table -->
         <div class="space-y-6 lg:col-span-2">
 
           <!-- TOP CLIENTS CARD -->
           <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-3">
             <h3 class="text-xs font-bold uppercase text-neonBlue flex items-center gap-2">
-              🏆 Топ Клієнти
+              🏆 Топ Клієнти (Поточний блок)
             </h3>
             <div id="topClientsList" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
           </div>
@@ -203,12 +203,12 @@
 
           <!-- TRANSACTIONS TABLE -->
           <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-3">
-            <h2 class="text-xs font-bold uppercase text-gray-400">Журнал Операцій</h2>
+            <h2 class="text-xs font-bold uppercase text-gray-400">Поточний Журнал Операцій</h2>
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr class="border-b border-brandBorder text-gray-400 uppercase text-[10px]">
-                    <th class="p-2">Категорія</th>
+                    <th class="p-2">Сорт</th>
                     <th class="p-2">Клієнт</th>
                     <th class="p-2">Вага</th>
                     <th class="p-2">Точно</th>
@@ -229,17 +229,35 @@
 
     </div>
 
-    <!-- ANALYTICS PAGE -->
+    <!-- PAGE 2: GLOBAL ARCHIVE & ANALYTICS -->
     <div id="pageAnalytics" class="hidden space-y-6">
-      <div class="flex justify-between items-center bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
-        <h2 class="text-sm font-bold uppercase text-white">HMS2.0 Analytics Visualizer</h2>
-        <div class="flex gap-2">
-          <button data-period="day" class="btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-brandDark border border-brandBorder text-gray-400 hover:text-white transition">День</button>
-          <button data-period="week" class="btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">Тиждень</button>
-          <button data-period="month" class="btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-brandDark border border-brandBorder text-gray-400 hover:text-white transition">Місяць</button>
+      
+      <!-- Toolbar for Archive Controls -->
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+        <div>
+          <h2 class="text-sm font-bold uppercase text-white">Глобальний Архів та Візуалізатор</h2>
+          <p class="text-[10px] text-gray-400">Загалом записано в архіві: <span id="archiveTotalCount" class="font-mono text-neonGreen font-bold">0</span> угод</p>
+        </div>
+
+        <div class="flex flex-wrap gap-2 items-center">
+          <div class="flex gap-1 bg-brandDark p-1 rounded-xl border border-brandBorder">
+            <button data-period="day" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">День</button>
+            <button data-period="week" class="btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">Тиждень</button>
+            <button data-period="month" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Місяць</button>
+            <button data-period="all" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Весь час</button>
+          </div>
+
+          <button id="btnExportTxt" class="px-4 py-1.5 text-xs font-bold rounded-xl bg-neonBlue/20 text-neonBlue border border-neonBlue/40 hover:bg-neonBlue/30 transition flex items-center gap-1">
+            📄 Завантажити TXT (Друк)
+          </button>
+          
+          <button id="btnClearArchive" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition">
+            🗑️ Очистити архів
+          </button>
         </div>
       </div>
 
+      <!-- Charts Row -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder h-72">
           <canvas id="chartTimeRevenue"></canvas>
@@ -256,6 +274,29 @@
           <canvas id="chartBubbleDeals"></canvas>
         </div>
       </div>
+
+      <!-- ARCHIVE TABLE BY CATEGORIES (SORTS) -->
+      <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-4">
+        <h3 class="text-xs font-bold uppercase text-neonGreen">Архівні Записи за сортами (сортування за датою)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-brandBorder text-gray-400 uppercase text-[10px]">
+                <th class="p-2">Сорт (Категорія)</th>
+                <th class="p-2">Клієнт</th>
+                <th class="p-2">Вага</th>
+                <th class="p-2">Точно</th>
+                <th class="p-2">Тип</th>
+                <th class="p-2">Оплата</th>
+                <th class="p-2">Борг</th>
+                <th class="p-2">Дата та Час</th>
+              </tr>
+            </thead>
+            <tbody id="archiveTableBody" class="divide-y divide-brandBorder font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
   </div>
