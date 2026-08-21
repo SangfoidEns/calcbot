@@ -1,6 +1,7 @@
-// Модуль роботи зі сховищем даних (CloudStorage / LocalStorage)
+// Модуль сховища з захистом від Race Conditions (Mutex Lock)
 
 let currentUserId = 'default_user';
+let saveQueue = Promise.resolve(); // Черга для послідовних записів
 
 export function setCurrentUserId(userId) {
   if (userId) {
@@ -13,29 +14,29 @@ function getStorageKey(key) {
 }
 
 /**
- * Завантаження даних
+ * Беспечне асинхронне читання
  */
 export async function loadData(key, defaultValue = null) {
   const storageKey = getStorageKey(key);
   const tg = window.Telegram?.WebApp;
 
-  // 1. Спроба зчитати з Telegram CloudStorage
+  // 1. Спроба читання з Telegram CloudStorage
   if (tg?.CloudStorage) {
     try {
-      const data = await new Promise((resolve) => {
+      const cloudValue = await new Promise((resolve) => {
         tg.CloudStorage.getItem(storageKey, (err, value) => {
           if (err || !value) resolve(null);
           else resolve(value);
         });
       });
 
-      if (data) {
-        const parsed = JSON.parse(data);
-        localStorage.setItem(storageKey, JSON.stringify(parsed)); // Синхронізуємо локально
+      if (cloudValue !== null) {
+        const parsed = JSON.parse(cloudValue);
+        localStorage.setItem(storageKey, JSON.stringify(parsed)); // Синхронізація
         return parsed;
       }
     } catch (e) {
-      console.warn('Помилка читання з CloudStorage:', e);
+      console.warn('[Store] Помилка читання з CloudStorage, перехід на LocalStorage:', e);
     }
   }
 
@@ -44,36 +45,42 @@ export async function loadData(key, defaultValue = null) {
     const localData = localStorage.getItem(storageKey);
     return localData ? JSON.parse(localData) : defaultValue;
   } catch (e) {
-    console.error('Помилка читання LocalStorage:', e);
+    console.error('[Store] Критична помилка читання з LocalStorage:', e);
     return defaultValue;
   }
 }
 
 /**
- * Збереження даних
+ * Послідовне збереження даних через чергу (Sequential Queue)
  */
 export async function saveData(key, value) {
-  const storageKey = getStorageKey(key);
-  const stringValue = JSON.stringify(value);
-  const tg = window.Telegram?.WebApp;
+  // Додаємо операцію в чергу, щоб уникнути конфліктів асинхронності
+  saveQueue = saveQueue.then(async () => {
+    const storageKey = getStorageKey(key);
+    const stringValue = JSON.stringify(value);
+    const tg = window.Telegram?.WebApp;
 
-  // Записи у LocalStorage робимо завжди
-  try {
-    localStorage.setItem(storageKey, stringValue);
-  } catch (e) {
-    console.error('Помилка збереження в LocalStorage:', e);
-  }
-
-  // Записи в Telegram CloudStorage для міжпристроєвої синхронізації
-  if (tg?.CloudStorage) {
+    // Локальний запис
     try {
-      await new Promise((resolve) => {
-        tg.CloudStorage.setItem(storageKey, stringValue, (err, success) => {
-          resolve(success);
-        });
-      });
+      localStorage.setItem(storageKey, stringValue);
     } catch (e) {
-      console.warn('Помилка збереження в CloudStorage:', e);
+      console.error('[Store] Помилка збереження LocalStorage:', e);
     }
-  }
+
+    // Хмарний запис Telegram
+    if (tg?.CloudStorage) {
+      try {
+        await new Promise((resolve) => {
+          tg.CloudStorage.setItem(storageKey, stringValue, (err, success) => {
+            if (err) console.warn('[Store] CloudStorage setItem error:', err);
+            resolve(success);
+          });
+        });
+      } catch (e) {
+        console.warn('[Store] Не вдалося зберегти в CloudStorage:', e);
+      }
+    }
+  });
+
+  return saveQueue;
 }
