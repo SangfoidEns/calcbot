@@ -1,7 +1,3 @@
-/**
- * Safe Log Parsing Engine
- */
-
 export function parseWeightAndBonus(str) {
   if (!str) return { baseGramm: 0, bonusGramm: 0 };
 
@@ -122,7 +118,6 @@ export function parseLogs(rawText) {
         const moneyData = parseMoneyAndPaymentType(rawMoney);
         const parsedDateObj = parseRecordDateTime(timeStr);
 
-        // Формула: (Базова вага * 1.1) + Бонус 1:1
         const exactGramm = (weightData.baseGramm * 1.1) + weightData.bonusGramm;
 
         records.push({
