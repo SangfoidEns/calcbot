@@ -1,10 +1,6 @@
-/**
- * Main Controller with Safe DOM Guarding
- */
-
 import { parseLogs } from './parser.js';
 import { savePurchases, loadPurchases, saveRawLogs, loadRawLogs, saveMyExpenses, loadMyExpenses } from './store.js';
-import { filterRecordsByPeriod, groupRecordsByTimeSlot } from './analytics.js';
+import { filterRecordsByPeriod, groupRecordsByTimeSlot, getTopClients } from './analytics.js';
 
 let purchases = {};
 let myExpenses = [];
@@ -13,6 +9,7 @@ let currentPeriod = 'week';
 
 let chartRevenueInstance = null;
 let chartWeightInstance = null;
+let chartBubbleInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   purchases = loadPurchases();
@@ -111,7 +108,7 @@ function addMyExpenseItem(type) {
   saveMyExpenses(myExpenses);
   noteInput.value = '';
   amountInput.value = '';
-  renderMyExpensesList();
+  processAllData();
 }
 
 function renderMyExpensesList() {
@@ -143,7 +140,7 @@ function renderMyExpensesList() {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
       saveMyExpenses(myExpenses);
-      renderMyExpensesList();
+      processAllData();
     });
   });
 }
@@ -172,6 +169,9 @@ function processAllData() {
   let totalBonusWeight = 0;
   let totalBonusCost = 0;
 
+  let totalNewDebts = 0;
+  let totalRepaidDebts = 0;
+
   const clientDebtsMap = {};
 
   parsedRecordsGlobal.forEach(r => {
@@ -197,6 +197,9 @@ function processAllData() {
     totalCostOfGoods += (baseCost + bonusCost);
     totalBonusCost += bonusCost;
 
+    totalNewDebts += r.debtNew;
+    totalRepaidDebts += r.debtRepaid;
+
     if (!clientDebtsMap[r.clientName]) {
       clientDebtsMap[r.clientName] = { newDebt: 0, repaidDebt: 0 };
     }
@@ -212,7 +215,14 @@ function processAllData() {
     }
   });
 
+  const pureMyExpenses = myExpenses
+    .filter(item => item.amount < 0)
+    .reduce((acc, item) => acc + Math.abs(item.amount), 0);
+
   const netProfit = totalRevenue - totalCostOfGoods;
+  const factNetProfit = netProfit - pureMyExpenses;
+
+  const factReceived = totalRevenue - totalNewDebts + totalRepaidDebts - pureMyExpenses;
 
   const setTxt = (id, txt) => {
     const el = document.getElementById(id);
@@ -220,7 +230,10 @@ function processAllData() {
   };
 
   setTxt('kpiRevenue', `${totalRevenue.toFixed(1)} €`);
+  setTxt('kpiFactReceived', `${factReceived.toFixed(1)} €`);
   setTxt('kpiNetProfit', `${netProfit.toFixed(1)} €`);
+  setTxt('kpiFactNetProfit', `${factNetProfit.toFixed(1)} €`);
+
   setTxt('kpiCashCard', `${totalCash.toFixed(0)} / ${totalCard.toFixed(0)} €`);
   setTxt('kpiCostOfGoods', `${totalCostOfGoods.toFixed(1)} €`);
   setTxt('kpiActiveDebt', `${totalActiveDebt.toFixed(1)} €`);
@@ -231,6 +244,7 @@ function processAllData() {
   setTxt('myCardTotal', `${totalCard.toFixed(1)} €`);
   setTxt('myBonusCostTotal', `${totalBonusCost.toFixed(1)} €`);
 
+  renderTopClients();
   renderMyExpensesList();
   renderDebts(clientDebtsMap);
   renderTable(parsedRecordsGlobal);
@@ -239,6 +253,30 @@ function processAllData() {
   if (pageAnalytics && !pageAnalytics.classList.contains('hidden')) {
     renderAnalyticsPage();
   }
+}
+
+function renderTopClients() {
+  const container = document.getElementById('topClientsList');
+  if (!container) return;
+
+  const topList = getTopClients(parsedRecordsGlobal, 3);
+  if (topList.length === 0) {
+    container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по клієнтах</p>';
+    return;
+  }
+
+  container.innerHTML = topList.map((c, i) => `
+    <div class="bg-brandDark p-3 rounded-xl border border-brandBorder flex flex-col justify-between space-y-1">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-bold text-white">${i + 1}. ${c.clientName}</span>
+        <span class="text-[10px] bg-neonBlue/20 text-neonBlue font-mono px-1.5 py-0.5 rounded">${c.dealsCount} угод</span>
+      </div>
+      <div class="text-[11px] font-mono flex justify-between pt-1">
+        <span class="text-neonGreen font-bold">${c.totalSpent.toFixed(1)} €</span>
+        <span class="text-gray-400">${c.totalWeight.toFixed(1)} г</span>
+      </div>
+    </div>
+  `).join('');
 }
 
 function initPurchasesUI() {
@@ -324,9 +362,11 @@ function renderAnalyticsPage() {
 
   if (chartRevenueInstance) chartRevenueInstance.destroy();
   if (chartWeightInstance) chartWeightInstance.destroy();
+  if (chartBubbleInstance) chartBubbleInstance.destroy();
 
   const canvasR = document.getElementById('chartTimeRevenue');
   const canvasW = document.getElementById('chartTimeWeight');
+  const canvasB = document.getElementById('chartBubbleDeals');
 
   if (canvasR) {
     const ctxR = canvasR.getContext('2d');
@@ -360,6 +400,39 @@ function renderAnalyticsPage() {
         }]
       },
       options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  if (canvasB) {
+    const ctxB = canvasB.getContext('2d');
+    const bubbleData = filtered.map(r => {
+      const d = new Date(r.parsedDateObj);
+      return {
+        x: d.getHours() + (d.getMinutes() / 60),
+        y: r.eurPaid,
+        r: Math.min(Math.max(r.exactGramm * 1.5, 4), 25)
+      };
+    });
+
+    chartBubbleInstance = new Chart(ctxB, {
+      type: 'bubble',
+      data: {
+        datasets: [{
+          label: 'Угоди (X: Година, Y: Оплата, R: Вага)',
+          data: bubbleData,
+          backgroundColor: 'rgba(0, 240, 255, 0.4)',
+          borderColor: '#00F0FF',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { title: { display: true, text: 'Година доби (0-24h)' }, min: 0, max: 24 },
+          y: { title: { display: true, text: 'Сума (€)' }, beginAtZero: true }
+        }
+      }
     });
   }
 }
