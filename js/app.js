@@ -1,7 +1,9 @@
 import { parseLogs } from './parser.js';
-import { savePurchases, loadPurchases, saveRawLogs, loadRawLogs, saveMyExpenses, loadMyExpenses } from './store.js';
+import { setCurrentUserId, savePurchases, loadPurchases, saveRawLogs, loadRawLogs, saveMyExpenses, loadMyExpenses } from './store.js';
 import { filterRecordsByPeriod, groupRecordsByTimeSlot, getTopClients } from './analytics.js';
+import { getTelegramUser } from './telegram.js';
 
+let currentUser = null;
 let purchases = {};
 let myExpenses = [];
 let parsedRecordsGlobal = [];
@@ -12,6 +14,10 @@ let chartWeightInstance = null;
 let chartBubbleInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 1. Авторизація через Telegram SDK
+  initUserSession();
+
+  // 2. Завантаження збережених даних для конкретного Telegram ID
   purchases = loadPurchases();
   myExpenses = loadMyExpenses();
 
@@ -44,6 +50,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+function initUserSession() {
+  currentUser = getTelegramUser();
+  
+  // Встановлюємо ID для ізоляції даних у store
+  setCurrentUserId(currentUser.id);
+
+  // Оновлюємо UI профілю
+  const userNameEl = document.getElementById('userName');
+  const userHandleEl = document.getElementById('userHandle');
+  const userAvatarEl = document.getElementById('userAvatar');
+
+  if (userNameEl) userNameEl.innerText = `${currentUser.firstName} ${currentUser.lastName}`.trim();
+  if (userHandleEl) userHandleEl.innerText = currentUser.username || `id: ${currentUser.id}`;
+
+  if (userAvatarEl) {
+    if (currentUser.photoUrl) {
+      userAvatarEl.innerHTML = `<img src="${currentUser.photoUrl}" class="w-full h-full rounded-full object-cover">`;
+    } else {
+      const initial = currentUser.firstName.charAt(0).toUpperCase() || 'U';
+      userAvatarEl.innerText = initial;
+    }
+  }
+}
 
 function initNavigation() {
   const tabDashboard = document.getElementById('tabDashboard');
