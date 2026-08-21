@@ -1,59 +1,99 @@
+// Допоміжна функція для безпечного парсингу дати
+export function safeParseDate(dateStr) {
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+// Фільтрація за періодами
 export function filterRecordsByPeriod(records, period) {
-  if (!Array.isArray(records)) return [];
   const now = new Date();
   return records.filter(r => {
-    const d = new Date(r.parsedDateObj);
-    const diffTime = Math.abs(now - d);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const d = safeParseDate(r.parsedDateObj);
+    const diffDays = (now - d) / (1000 * 60 * 60 * 24);
 
     if (period === 'day') return diffDays <= 1;
     if (period === 'week') return diffDays <= 7;
     if (period === 'month') return diffDays <= 30;
-    return true;
+    return true; // 'all'
   });
 }
 
+// Безпечне групування для лінійних/стовпчастих графіків
 export function groupRecordsByTimeSlot(records, period) {
   const grouped = {};
-  if (!Array.isArray(records)) return grouped;
 
   records.forEach(r => {
-    const d = new Date(r.parsedDateObj);
+    const d = safeParseDate(r.parsedDateObj);
     let key = '';
 
     if (period === 'day') {
       key = `${String(d.getHours()).padStart(2, '0')}:00`;
-    } else if (period === 'week' || period === 'month') {
-      key = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+    } else if (period === 'week') {
+      const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      key = `${days[d.getDay()]} (${d.getDate()}.${d.getMonth() + 1})`;
+    } else if (period === 'month') {
+      key = `${d.getDate()}.${d.getMonth() + 1}`;
     } else {
       key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }
 
     if (!grouped[key]) {
-      grouped[key] = { revenue: 0, weight: 0 };
+      grouped[key] = { revenue: 0, weight: 0, timestamp: d.getTime() };
     }
 
     grouped[key].revenue += (r.eurPaid || 0);
     grouped[key].weight += (r.exactGramm || 0);
   });
 
-  return grouped;
+  // Сортуємо ключі за хронологією
+  const sortedKeys = Object.keys(grouped).sort((a, b) => grouped[a].timestamp - grouped[b].timestamp);
+  
+  const result = {};
+  sortedKeys.forEach(k => {
+    result[k] = grouped[k];
+  });
+
+  return result;
 }
 
 export function getTopClients(records, limit = 3) {
   const map = {};
-  if (!Array.isArray(records)) return [];
-
   records.forEach(r => {
     if (!map[r.clientName]) {
       map[r.clientName] = { clientName: r.clientName, totalSpent: 0, totalWeight: 0, dealsCount: 0 };
     }
-    map[r.clientName].totalSpent += r.eurPaid;
-    map[r.clientName].totalWeight += r.exactGramm;
+    map[r.clientName].totalSpent += r.eurPaid || 0;
+    map[r.clientName].totalWeight += r.exactGramm || 0;
     map[r.clientName].dealsCount += 1;
   });
 
   return Object.values(map)
     .sort((a, b) => b.totalSpent - a.totalSpent)
     .slice(0, limit);
+}
+
+// Розрахунок даних для Heatmap (День тижня [0-6] x Година [0-23])
+export function calculateWeeklyHeatmap(records, selectedMonth = 'all') {
+  // Matrix 7x24 initialized with 0
+  const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));
+  let maxVal = 0;
+
+  records.forEach(r => {
+    const d = safeParseDate(r.parsedDateObj);
+    
+    // Фільтр по місяцю (якщо обрано конкретний)
+    if (selectedMonth !== 'all' && d.getMonth().toString() !== selectedMonth.toString()) {
+      return;
+    }
+
+    const dayIndex = d.getDay(); // 0 - Нд, 1 - Пн...
+    const hour = d.getHours();
+
+    matrix[dayIndex][hour] += (r.eurPaid || 0);
+    if (matrix[dayIndex][hour] > maxVal) {
+      maxVal = matrix[dayIndex][hour];
+    }
+  });
+
+  return { matrix, maxVal };
 }
