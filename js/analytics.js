@@ -1,7 +1,3 @@
-/**
- * Safe Analytics Processing
- */
-
 export function filterRecordsByPeriod(records, period) {
   if (!Array.isArray(records)) return [];
   const now = new Date();
@@ -42,4 +38,22 @@ export function groupRecordsByTimeSlot(records, period) {
   });
 
   return grouped;
+}
+
+export function getTopClients(records, limit = 3) {
+  const map = {};
+  if (!Array.isArray(records)) return [];
+
+  records.forEach(r => {
+    if (!map[r.clientName]) {
+      map[r.clientName] = { clientName: r.clientName, totalSpent: 0, totalWeight: 0, dealsCount: 0 };
+    }
+    map[r.clientName].totalSpent += r.eurPaid;
+    map[r.clientName].totalWeight += r.exactGramm;
+    map[r.clientName].dealsCount += 1;
+  });
+
+  return Object.values(map)
+    .sort((a, b) => b.totalSpent - a.totalSpent)
+    .slice(0, limit);
 }
