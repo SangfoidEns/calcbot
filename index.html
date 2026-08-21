@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Ledger Analytics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#0b0f19',
+            brandCard: '#111827',
+            brandBorder: '#1f2937',
+            neonGreen: '#00FF88',
+            neonPurple: '#9D00FF',
+            neonBlue: '#00F0FF',
+            neonYellow: '#FFE600',
+            neonRed: '#FF0055'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-brandDark text-gray-100 font-sans min-h-screen relative overflow-x-hidden">
+
+  <!-- Сучасний технологічний фон / неонова стіна -->
+  <div class="neon-wall"></div>
+
+  <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6 relative z-10">
+
+    <!-- Header & Nav -->
+    <header class="flex flex-col md:flex-row justify-between items-center gap-4 bg-brandCard/80 backdrop-blur-md p-4 rounded-2xl border border-brandBorder shadow-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-3 h-3 rounded-full bg-neonGreen animate-ping"></div>
+        <h1 class="text-xl font-extrabold tracking-wider uppercase text-white">
+          Cyber<span class="text-neonGreen">Ledger</span> v2.0
+        </h1>
+      </div>
+      <nav class="flex gap-2">
+        <button id="tabDashboard" class="px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
+          Дашборд
+        </button>
+        <button id="tabAnalytics" class="px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
+          Аналітика
+        </button>
+      </nav>
+    </header>
+
+    <!-- DASHBOARD PAGE -->
+    <div id="pageDashboard" class="space-y-6">
+
+      <!-- KPI Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Виручка</span>
+          <p id="kpiRevenue" class="text-lg md:text-xl font-mono font-bold text-neonGreen">0 €</p>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Чистий Прибуток</span>
+          <p id="kpiNetProfit" class="text-lg md:text-xl font-mono font-bold text-neonBlue">0 €</p>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Готівка / Карта</span>
+          <p id="kpiCashCard" class="text-lg md:text-xl font-mono font-bold text-white">0 / 0 €</p>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Собівартість Товару</span>
+          <p id="kpiCostOfGoods" class="text-lg md:text-xl font-mono font-bold text-neonYellow">0 €</p>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Активний Борг</span>
+          <p id="kpiActiveDebt" class="text-lg md:text-xl font-mono font-bold text-neonRed">0 €</p>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Точна Вага</span>
+          <p id="kpiExactWeight" class="text-lg md:text-xl font-mono font-bold text-neonGreen">0 г</p>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Бонусна Вага</span>
+          <p id="kpiBonusWeight" class="text-lg md:text-xl font-mono font-bold text-neonPurple">0 г</p>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+          <span class="text-[10px] text-gray-400 uppercase font-bold">Угод</span>
+          <p id="kpiDeals" class="text-lg md:text-xl font-mono font-bold text-white">0</p>
+        </div>
+      </div>
+
+      <!-- Main Content Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Input & My Section -->
+        <div class="space-y-6 lg:col-span-1">
+          
+          <!-- RAW LOG INPUT -->
+          <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-3">
+            <h2 class="text-xs font-bold uppercase text-gray-400">Ввід текстового логу</h2>
+            <textarea id="rawInput" rows="8" placeholder="Встав сюди журнал..." class="w-full bg-brandDark p-3 rounded-xl border border-brandBorder text-xs font-mono focus:border-neonGreen focus:outline-none transition"></textarea>
+            <button id="btnCalculate" class="w-full py-2.5 bg-neonGreen/20 text-neonGreen border border-neonGreen/40 rounded-xl font-bold text-xs uppercase hover:bg-neonGreen/30 transition">
+              Розрахувати
+            </button>
+          </div>
+
+          <!-- CATEGORY "МОЇ" -->
+          <div class="bg-brandCard/90 p-4 rounded-2xl neon-border-purple space-y-3">
+            <div class="flex justify-between items-center border-b border-brandBorder pb-2">
+              <h2 class="text-xs font-bold uppercase text-neonPurple">
+                Категорія <span class="tech-backdrop text-white">"МОЇ"</span>
+              </h2>
+              <span class="text-xs font-mono font-bold text-white" id="myTotalDisplay">0 €</span>
+            </div>
+
+            <!-- Інформаційні лічильники -->
+            <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+              <div class="bg-brandDark p-2 rounded border border-brandBorder">
+                <span class="text-gray-400 block">💳 На карті:</span>
+                <span id="myCardTotal" class="text-neonBlue font-bold text-xs">0 €</span>
+              </div>
+              <div class="bg-brandDark p-2 rounded border border-brandBorder">
+                <span class="text-gray-400 block">🎁 Бонуси (собів.):</span>
+                <span id="myBonusCostTotal" class="text-neonPurple font-bold text-xs">0 €</span>
+              </div>
+            </div>
+
+            <!-- Quick Buttons -->
+            <div class="space-y-1">
+              <span class="text-[10px] text-gray-400 uppercase font-bold">Швидкий розхід:</span>
+              <div class="grid grid-cols-3 gap-1.5">
+                <button type="button" data-name="Rewe" class="btn-quick-expense py-1 bg-brandDark hover:bg-brandBorder border border-brandBorder rounded text-[11px] font-semibold text-gray-300">🛒 Rewe</button>
+                <button type="button" data-name="Restoran" class="btn-quick-expense py-1 bg-brandDark hover:bg-brandBorder border border-brandBorder rounded text-[11px] font-semibold text-gray-300">🍕 Restoran</button>
+                <button type="button" data-name="Tabak" class="btn-quick-expense py-1 bg-brandDark hover:bg-brandBorder border border-brandBorder rounded text-[11px] font-semibold text-gray-300">🚬 Tabak</button>
+              </div>
+            </div>
+
+            <!-- Form -->
+            <div class="space-y-2 pt-1">
+              <div class="flex gap-2">
+                <input type="text" id="myExpenseNote" placeholder="Опис" class="w-3/5 p-1.5 bg-brandDark rounded-xl border border-brandBorder text-xs">
+                <input type="number" id="myExpenseAmount" placeholder="Сума €" class="w-2/5 p-1.5 bg-brandDark rounded-xl border border-brandBorder text-xs">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="btnAddIncome" class="py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold">+ Дохід</button>
+                <button type="button" id="btnAddExpense" class="py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold">- Розхід</button>
+              </div>
+            </div>
+
+            <div id="myExpensesList" class="space-y-1.5 max-h-28 overflow-y-auto text-xs pt-2"></div>
+          </div>
+
+          <!-- PURCHASES / COST SETTINGS -->
+          <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-3">
+            <h2 class="text-xs font-bold uppercase text-neonYellow">Закупівлі (€ / 100g)</h2>
+            <div id="purchasesList" class="space-y-2 text-xs"></div>
+            <div class="flex gap-2 pt-2 border-t border-brandBorder">
+              <input type="text" id="newCatName" placeholder="Категорія" class="w-1/2 p-1.5 bg-brandDark rounded-xl border border-brandBorder text-xs uppercase">
+              <input type="number" id="newCatCost" placeholder="Ціна €" class="w-1/2 p-1.5 bg-brandDark rounded-xl border border-brandBorder text-xs">
+            </div>
+            <button id="btnAddPurchase" class="w-full py-1.5 bg-neonYellow/20 text-neonYellow border border-neonYellow/40 rounded-xl text-xs font-bold">Зберегти ціну</button>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Debts & Table -->
+        <div class="space-y-6 lg:col-span-2">
+
+          <!-- DEBTS CONTAINER -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-2">
+              <h3 class="text-xs font-bold uppercase text-neonRed">Активні Борги</h3>
+              <div id="activeDebtsList" class="space-y-1 text-xs max-h-36 overflow-y-auto font-mono"></div>
+            </div>
+            <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-2">
+              <h3 class="text-xs font-bold uppercase text-emerald-400">Погашені Борги</h3>
+              <div id="repaidDebtsList" class="space-y-1 text-xs max-h-36 overflow-y-auto font-mono"></div>
+            </div>
+          </div>
+
+          <!-- TRANSACTIONS TABLE -->
+          <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-3">
+            <h2 class="text-xs font-bold uppercase text-gray-400">Журнал Операцій</h2>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-brandBorder text-gray-400 uppercase text-[10px]">
+                    <th class="p-2">Категорія</th>
+                    <th class="p-2">Клієнт</th>
+                    <th class="p-2">Вага</th>
+                    <th class="p-2">Точно</th>
+                    <th class="p-2">Тип</th>
+                    <th class="p-2">Оплата</th>
+                    <th class="p-2">Борг</th>
+                    <th class="p-2">Час</th>
+                  </tr>
+                </thead>
+                <tbody id="recordsTableBody" class="divide-y divide-brandBorder font-mono"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ANALYTICS PAGE -->
+    <div id="pageAnalytics" class="hidden space-y-6">
+      <div class="flex justify-between items-center bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+        <h2 class="text-sm font-bold uppercase text-white">Аналітичні Графіки</h2>
+        <div class="flex gap-2">
+          <button data-period="day" class="btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-brandDark border border-brandBorder text-gray-400 hover:text-white transition">День</button>
+          <button data-period="week" class="btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">Тиждень</button>
+          <button data-period="month" class="btn-period px-4 py-1.5 text-xs font-bold rounded-lg bg-brandDark border border-brandBorder text-gray-400 hover:text-white transition">Місяць</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder h-72">
+          <canvas id="chartTimeRevenue"></canvas>
+        </div>
+        <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder h-72">
+          <canvas id="chartTimeWeight"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
