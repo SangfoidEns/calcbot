@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HMS2.0 engine Analytics</title>
+  
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -40,6 +44,18 @@
           HMS2.0 <span class="text-neonGreen">engine Analytics</span>
         </h1>
       </div>
+
+      <!-- Telegram Profile Status Widget -->
+      <div id="userProfileWidget" class="flex items-center gap-3 bg-brandDark/80 px-3 py-1.5 rounded-xl border border-brandBorder">
+        <div id="userAvatar" class="w-7 h-7 rounded-full bg-neonPurple/30 text-neonPurple font-bold flex items-center justify-center text-xs border border-neonPurple/50">
+          ?
+        </div>
+        <div class="flex flex-col text-left">
+          <span id="userName" class="text-xs font-bold text-white leading-none">Завантаження...</span>
+          <span id="userHandle" class="text-[10px] font-mono text-gray-400">@id</span>
+        </div>
+      </div>
+
       <nav class="flex gap-2">
         <button id="tabDashboard" class="px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
           Дашборд
