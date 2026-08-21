@@ -1,36 +1,9 @@
-// Модуль ініціалізації Telegram WebApp SDK
-
-function getOrCreateFallbackDeviceId() {
-  let fallbackId = localStorage.getItem('hms2_fallback_user_id');
-  if (!fallbackId) {
-    fallbackId = 'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
-    localStorage.setItem('hms2_fallback_user_id', fallbackId);
-  }
-  return fallbackId;
-}
-
-function getCachedUser() {
-  try {
-    const cached = localStorage.getItem('hms2_telegram_user_cache');
-    return cached ? JSON.parse(cached) : null;
-  } catch (e) {
-    console.error('[Telegram SDK] Помилка зчитування кешу:', e);
-    return null;
-  }
-}
-
-function setCachedUser(userObj) {
-  try {
-    localStorage.setItem('hms2_telegram_user_cache', JSON.stringify(userObj));
-  } catch (e) {
-    console.error('[Telegram SDK] Помилка збереження кешу:', e);
-  }
-}
-
 /**
- * Отримання профілю користувача з гарантією відсутності втрати ID
- * @returns {Promise<{id: string, firstName: string, lastName: string, username: string, photoUrl: string}>}
+ * Безпечний модуль ініціалізації Telegram WebApp SDK
  */
+
+const CACHE_KEY = 'hms2_user_session';
+
 export async function getTelegramUser() {
   const tg = window.Telegram?.WebApp;
 
@@ -47,41 +20,39 @@ export async function getTelegramUser() {
       firstName: tgUser.first_name || 'Користувач',
       lastName: tgUser.last_name || '',
       username: tgUser.username ? `@${tgUser.username}` : '',
-      photoUrl: tgUser.photo_url || ''
+      photoUrl: tgUser.photo_url || '',
+      isRealTg: true
     };
-
-    setCachedUser(userProfile);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(userProfile));
     return userProfile;
   }
 
-  // 2. Якщо Telegram WebView завантажився без initData (повторний вхід) - беремо з кешу
-  const cachedUser = getCachedUser();
-  if (cachedUser && cachedUser.id) {
-    return cachedUser;
+  // 2. Якщо Telegram WebView завантажився без initData - беремо з кешу
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {
+      console.warn('[Telegram SDK] Помилка зчитування кешу');
+    }
   }
 
-  // 3. Резервний локальний ідентифікатор для розробки поза Telegram
-  const fallbackId = getOrCreateFallbackDeviceId();
-  const defaultUser = {
-    id: fallbackId,
-    firstName: 'Локальний',
-    lastName: 'Користувач',
-    username: '@local_mode',
-    photoUrl: ''
+  // 3. Тільки для локальної розробки поза Telegram
+  const fallbackUser = {
+    id: 'dev_user_' + Math.random().toString(36).substring(2, 7),
+    firstName: 'Dev',
+    lastName: 'User',
+    username: '@dev_mode',
+    photoUrl: '',
+    isRealTg: false
   };
-
-  setCachedUser(defaultUser);
-  return defaultUser;
+  localStorage.setItem(CACHE_KEY, JSON.stringify(fallbackUser));
+  return fallbackUser;
 }
 
-/**
- * Застосування темного або світлого стилю Telegram
- */
 export function applyTelegramTheme() {
   const tg = window.Telegram?.WebApp;
-  if (!tg || !tg.colorScheme) return;
-
-  if (tg.colorScheme === 'dark') {
+  if (tg?.colorScheme === 'dark' || !tg?.colorScheme) {
     document.documentElement.classList.add('dark');
   } else {
     document.documentElement.classList.remove('dark');
