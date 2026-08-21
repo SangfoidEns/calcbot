@@ -75,7 +75,7 @@ export async function getTelegramUser() {
 }
 
 /**
- * Примененеия темного або світлого стилю Telegram
+ * Застосування темного або світлого стилю Telegram
  */
 export function applyTelegramTheme() {
   const tg = window.Telegram?.WebApp;
