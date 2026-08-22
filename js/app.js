@@ -135,20 +135,28 @@ function initUserSession() {
   }
 }
 
+// ПЕРЕМИКАННЯ 3-Х СТОРІНОК (ВКЛАДОК)
 function setActiveTab(index) {
   activeTabIdx = index;
   
-  document.getElementById('pageDashboard')?.classList.toggle('hidden', index !== 0);
-  document.getElementById('pageAnalytics')?.classList.toggle('hidden', index !== 1);
-  document.getElementById('pageForecast')?.classList.toggle('hidden', index !== 2);
+  const pageDash = document.getElementById('pageDashboard');
+  const pageAnal = document.getElementById('pageAnalytics');
+  const pageFore = document.getElementById('pageForecast');
+
+  if (pageDash) pageDash.classList.toggle('hidden', index !== 0);
+  if (pageAnal) pageAnal.classList.toggle('hidden', index !== 1);
+  if (pageFore) pageFore.classList.toggle('hidden', index !== 2);
 
   const btnDash = document.getElementById('tabDashboard');
   const btnAnal = document.getElementById('tabAnalytics');
   const btnFore = document.getElementById('tabForecast');
 
-  if (btnDash) btnDash.className = index === 0 ? 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all' : 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all';
-  if (btnAnal) btnAnal.className = index === 1 ? 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all' : 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all';
-  if (btnFore) btnFore.className = index === 2 ? 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all' : 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all';
+  const activeClass = 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all';
+  const inactiveClass = 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all';
+
+  if (btnDash) btnDash.className = index === 0 ? activeClass : inactiveClass;
+  if (btnAnal) btnAnal.className = index === 1 ? activeClass : inactiveClass;
+  if (btnFore) btnFore.className = index === 2 ? activeClass : inactiveClass;
 
   if (index === 1) renderAnalyticsPage();
   if (index === 2) renderForecastPage();
@@ -335,8 +343,11 @@ function processCurrentInput() {
     .filter(item => item.amount < 0)
     .reduce((acc, item) => acc + Math.abs(item.amount), 0);
 
-  const netProfit = totalRevenue - totalCostOfGoods - pureMyExpenses;
-  const factNetProfit = netProfit;
+  // ПОВЕРНЕНО ЯК БУЛО РАНІШЕ:
+  // netProfit = Виручка - Собівартість товарів
+  const netProfit = totalRevenue - totalCostOfGoods; 
+  // factNetProfit = Чистий прибуток - Особисті витрати
+  const factNetProfit = netProfit - pureMyExpenses;
   const factReceived = totalRevenue - totalNewDebts + totalRepaidDebts - pureMyExpenses;
 
   const setTxt = (id, txt) => {
@@ -664,6 +675,7 @@ function renderArchiveTable(records) {
   }).join('');
 }
 
+// 3-ТЯ СТОРІНКА: БЕЗПЕЧНИЙ РЕНДЕР ПРОГНОЗУ
 function renderForecastPage() {
   const forecasts = generateForecasts(globalArchiveRecords);
 
