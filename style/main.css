@@ -1,30 +1,43 @@
-/* Основні стилі додатку */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
 
-.purchase-item {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.purchase-item:hover {
-  transform: translateY(-1px);
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
 }
 
-input[type="checkbox"] {
-  cursor: pointer;
+/* Сучасна технологічна неонова стіна на фоні */
+.neon-wall {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: 
+    radial-gradient(circle at 15% 20%, rgba(0, 255, 136, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(157, 0, 255, 0.07) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.03) 0%, transparent 60%);
+  z-index: 0;
+  pointer-events: none;
 }
 
+/* Кастомний Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #0b0f19;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.5);
-  border-radius: 3px;
+  background: #1f2937;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 240, 255, 0.4);
+  background: #00FF88;
 }
