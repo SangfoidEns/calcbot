@@ -20,7 +20,7 @@ import {
 } from './analytics.js';
 import { getTelegramUser } from './telegram.js';
 import { exportArchiveToTxt } from './export.js';
-import { generateForecasts } from './forecasting.js';
+import { generateForecasts } from './forecast.js'; // FIX: Точна назва файлу
 
 let currentUser = null;
 let purchases = {};
@@ -81,8 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (confirm('Дійсно очистити весь глобальний архів?')) {
         clearGlobalArchive();
         globalArchiveRecords = [];
-        renderAnalyticsPage();
-        renderForecastPage();
+        processCurrentInput();
       }
     });
   }
