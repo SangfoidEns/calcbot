@@ -53,11 +53,14 @@
       </div>
 
       <nav class="flex gap-2">
-        <button id="tabDashboard" class="px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
-          Дашборд (Поточна таблиця)
+        <button id="tabDashboard" class="px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
+          Дашборд
         </button>
-        <button id="tabAnalytics" class="px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
+        <button id="tabAnalytics" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
           Архів & Аналітика
+        </button>
+        <button id="tabForecast" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
+          🔮 Прогноз
         </button>
       </nav>
     </header>
@@ -320,8 +323,58 @@
 
     </div>
 
+    <!-- PAGE 3: FORECAST -->
+    <div id="pageForecast" class="hidden space-y-6">
+      <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder">
+        <h2 class="text-sm font-bold uppercase text-white">🔮 AI & Stat Прогноз Продажів</h2>
+        <p class="text-[10px] text-gray-400 mt-1">Розраховано за допомогою лінійної регресії на основі вашої історії операцій</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Завтра -->
+        <div class="bg-brandCard/90 p-5 rounded-2xl border border-brandBorder space-y-3">
+          <span class="text-xs font-bold text-neonBlue uppercase">Завтра (1 день)</span>
+          <div>
+            <p class="text-2xl font-mono font-bold text-white" id="fcTomorrowRev">0 €</p>
+            <p class="text-xs text-gray-400 mt-1">Вага: <span class="text-neonGreen font-mono font-bold" id="fcTomorrowWeight">0 г</span></p>
+            <p class="text-xs text-gray-400">Угод: <span class="text-white font-mono" id="fcTomorrowDeals">0</span></p>
+          </div>
+        </div>
+
+        <!-- Тиждень -->
+        <div class="bg-brandCard/90 p-5 rounded-2xl border border-brandBorder space-y-3">
+          <span class="text-xs font-bold text-neonGreen uppercase">Наступні 7 днів</span>
+          <div>
+            <p class="text-2xl font-mono font-bold text-white" id="fcWeekRev">0 €</p>
+            <p class="text-xs text-gray-400 mt-1">Вага: <span class="text-neonGreen font-mono font-bold" id="fcWeekWeight">0 г</span></p>
+            <p class="text-xs text-gray-400">Угод: <span class="text-white font-mono" id="fcWeekDeals">0</span></p>
+          </div>
+        </div>
+
+        <!-- Місяць -->
+        <div class="bg-brandCard/90 p-5 rounded-2xl border border-brandBorder space-y-3">
+          <span class="text-xs font-bold text-neonYellow uppercase">Наступні 30 днів</span>
+          <div>
+            <p class="text-2xl font-mono font-bold text-white" id="fcMonthRev">0 €</p>
+            <p class="text-xs text-gray-400 mt-1">Вага: <span class="text-neonGreen font-mono font-bold" id="fcMonthWeight">0 г</span></p>
+            <p class="text-xs text-gray-400">Угод: <span class="text-white font-mono" id="fcMonthDeals">0</span></p>
+          </div>
+        </div>
+
+        <!-- Рік -->
+        <div class="bg-brandCard/90 p-5 rounded-2xl border border-neonPurple/50 space-y-3">
+          <span class="text-xs font-bold text-neonPurple uppercase">Рік (365 днів)</span>
+          <div>
+            <p class="text-2xl font-mono font-bold text-white" id="fcYearRev">0 €</p>
+            <p class="text-xs text-gray-400 mt-1">Вага: <span class="text-neonGreen font-mono font-bold" id="fcYearWeight">0 г</span></p>
+            <p class="text-xs text-gray-400">Угод: <span class="text-white font-mono" id="fcYearDeals">0</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
