@@ -2,9 +2,8 @@
 <html lang="uk" class="dark">
 <head>
   <meta charset="UTF-8">
-  <!-- viewport-fit=cover критично важливий для iOS notch (чубчика) та safe-areas -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>HMS2.0 — iOS Glass & Analytics</title>
+  <title>HMS2.0 Analytics</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -15,7 +14,7 @@
       theme: {
         extend: {
           colors: {
-            glassBg: 'rgba(17, 24, 39, 0.75)',
+            glassBg: 'rgba(17, 24, 39, 0.65)',
             glassBorder: 'rgba(255, 255, 255, 0.08)',
             tgBlue: '#24A1DE',
             neonGreen: '#00FF88',
@@ -30,40 +29,36 @@
 </head>
 <body class="bg-black text-gray-100 font-sans min-h-screen select-none overflow-x-hidden antialiased">
 
-  <!-- Неоновий фон (градієнтний блюр) -->
-  <div class="fixed inset-0 pointer-events-none z-0 opacity-40">
-    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-tgBlue/20 rounded-full blur-[120px]"></div>
-    <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-neonPurple/20 rounded-full blur-[120px]"></div>
-  </div>
+  <div class="neon-wall"></div>
 
-  <!-- Header / Navigation (Sticky iOS Glass) -->
-  <header class="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/70 border-b border-glassBorder px-4 py-3">
+  <!-- Header -->
+  <header class="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/60 border-b border-glassBorder px-4 py-3">
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
       <div class="flex items-center gap-2">
         <div class="w-2.5 h-2.5 rounded-full bg-neonGreen animate-pulse"></div>
         <h1 class="text-base font-bold tracking-tight text-white">HMS2.0</h1>
       </div>
 
-      <!-- Navigation Tabs (3 Pages) -->
-      <nav id="navTabs" class="flex bg-slate-900/90 p-1 rounded-2xl border border-glassBorder text-xs font-semibold shadow-inner">
-        <button id="tabDashboard" class="px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all duration-200">Журнал</button>
-        <button id="tabAnalytics" class="px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all duration-200">Архів</button>
-        <button id="tabForecast" class="px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all duration-200">Прогноз</button>
+      <!-- Navigation Tabs (ЗБЕРЕЖЕНО ТВІЙ СТИЛЬ + ДОДАНО 3-ТЮ ВКЛАДКУ) -->
+      <nav id="navTabs" class="flex bg-slate-900/80 p-1 rounded-2xl border border-glassBorder text-xs font-semibold">
+        <button id="tabDashboard" class="px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all">Журнал</button>
+        <button id="tabAnalytics" class="px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all">Архів</button>
+        <button id="tabForecast" class="px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all">Прогноз</button>
       </nav>
 
-      <!-- Telegram Profile Widget -->
-      <div id="userProfileWidget" class="flex items-center gap-2 bg-slate-900/60 px-2.5 py-1 rounded-full border border-glassBorder">
+      <!-- Telegram Profile -->
+      <div id="userProfileWidget" class="flex items-center gap-2 bg-slate-900/50 px-2.5 py-1 rounded-full border border-glassBorder">
         <div id="userAvatar" class="w-6 h-6 rounded-full bg-tgBlue/30 text-tgBlue font-bold flex items-center justify-center text-[10px]">?</div>
         <span id="userName" class="text-xs font-medium text-gray-200 hidden sm:inline">User</span>
       </div>
     </div>
   </header>
 
-  <!-- Main Swipe Container -->
-  <main id="swipeContainer" class="relative z-10 max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+  <!-- Swipe Container -->
+  <main id="swipeContainer" class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-    <!-- PAGE 1: DASHBOARD -->
-    <section id="pageDashboard" class="page-tab space-y-6 transition-all duration-300">
+    <!-- PAGE 1: DASHBOARD (ТВІЙ ОРИГІНАЛЬНИЙ МАКЕТ) -->
+    <section id="pageDashboard" class="page-tab space-y-6">
       
       <!-- KPI Grid -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -88,51 +83,49 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel: Input & Purchases -->
+        <!-- Left Panel -->
         <div class="space-y-6">
           
-          <!-- Text Input Component with Clear Button -->
+          <!-- Text Input (ДОДАНО КНОПКУ ХРЕСТИК #btnClearInput) -->
           <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3 relative">
             <div class="flex justify-between items-center">
               <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400">Ввід текстового логу</h2>
-              <button id="btnClearInput" aria-label="Очистити поле" class="text-gray-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-6 h-6 flex items-center justify-center text-xs transition active:scale-95">✕</button>
+              <button id="btnClearInput" class="text-gray-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-5 h-5 flex items-center justify-center text-xs transition">✕</button>
             </div>
-            <textarea id="rawInput" rows="7" placeholder="Встав сюди журнал..." class="w-full bg-slate-950/80 p-3 rounded-2xl border border-glassBorder text-xs font-mono text-white focus:border-tgBlue focus:outline-none transition resize-none"></textarea>
-            <button id="btnCalculate" class="w-full py-3 bg-tgBlue/20 text-tgBlue hover:bg-tgBlue/30 border border-tgBlue/40 rounded-2xl font-bold text-xs uppercase tracking-wider transition active:scale-[0.98]">
+            <textarea id="rawInput" rows="7" placeholder="Встав сюди журнал..." class="w-full bg-slate-950/60 p-3 rounded-2xl border border-glassBorder text-xs font-mono text-white focus:border-tgBlue focus:outline-none transition resize-none"></textarea>
+            <button id="btnCalculate" class="w-full py-3 bg-tgBlue/20 text-tgBlue hover:bg-tgBlue/30 border border-tgBlue/40 rounded-2xl font-bold text-xs uppercase transition">
               Обробити та Зберегти
             </button>
           </div>
 
-          <!-- Purchases Component -->
+          <!-- Purchases (ДОДАНО 3-ТЄ ПОЛЕ #newCatGrams) -->
           <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3">
-            <h2 class="text-xs font-bold uppercase text-neonYellow tracking-wider">Закупівлі (Собівартість & Вага)</h2>
+            <h2 class="text-xs font-bold uppercase text-neonYellow tracking-wider">Закупівлі (Ціна & Грами)</h2>
             <div id="purchasesList" class="space-y-2 text-xs"></div>
             <div class="grid grid-cols-3 gap-2 pt-2 border-t border-glassBorder">
-              <input type="text" id="newCatName" placeholder="Сорт" class="bg-slate-950/80 p-2 rounded-xl border border-glassBorder text-xs uppercase text-white focus:outline-none focus:border-tgBlue">
-              <input type="number" id="newCatCost" placeholder="€ / 100g" class="bg-slate-950/80 p-2 rounded-xl border border-glassBorder text-xs text-white focus:outline-none focus:border-tgBlue">
-              <input type="number" id="newCatGrams" placeholder="Грам (г)" class="bg-slate-950/80 p-2 rounded-xl border border-glassBorder text-xs text-white focus:outline-none focus:border-tgBlue">
+              <input type="text" id="newCatName" placeholder="Категорія" class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder text-xs uppercase text-white">
+              <input type="number" id="newCatCost" placeholder="€ / 100g" class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder text-xs text-white">
+              <input type="number" id="newCatGrams" placeholder="Грам (г)" class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder text-xs text-white">
             </div>
-            <button id="btnAddPurchase" class="w-full py-2.5 bg-neonYellow/20 text-neonYellow border border-neonYellow/40 rounded-xl text-xs font-bold uppercase hover:bg-neonYellow/30 transition active:scale-[0.98]">
-              Зберегти Закупівлю
-            </button>
+            <button id="btnAddPurchase" class="w-full py-2 bg-neonYellow/20 text-neonYellow border border-neonYellow/40 rounded-xl text-xs font-bold">Зберегти Закупівлю</button>
           </div>
 
         </div>
 
-        <!-- Right Panel: Top Clients & Table -->
+        <!-- Right Panel -->
         <div class="lg:col-span-2 space-y-6">
           
-          <!-- Top Clients Accordion -->
+          <!-- Top Clients -->
           <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3">
-            <h3 class="text-xs font-bold uppercase text-tgBlue tracking-wider">🏆 Топ Клієнти (Клацніть для деталей)</h3>
+            <h3 class="text-xs font-bold uppercase text-tgBlue tracking-wider">🏆 Топ Клієнти (Натисни для останніх 3 покупок)</h3>
             <div id="topClientsList" class="space-y-2"></div>
           </div>
 
-          <!-- Transactions Table -->
+          <!-- Current Table -->
           <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3">
             <div class="flex justify-between items-center">
               <h2 class="text-xs font-bold uppercase text-gray-400 tracking-wider">Поточний Журнал Операцій</h2>
-              <span class="text-[10px] text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 font-medium">VIP Угоди (≥ 50€) підсвічено</span>
+              <span class="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">≥ 50€ підсвічено</span>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs">
@@ -157,22 +150,16 @@
       </div>
     </section>
 
-    <!-- PAGE 2: ANALYTICS (ARCHIVE) -->
+    <!-- PAGE 2: ANALYTICS (ТВІЙ ІСНУЮЧИЙ АРХІВ) -->
     <section id="pageAnalytics" class="page-tab space-y-6 hidden">
-      <div class="glass-card p-5 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
-        <h2 class="text-base font-bold text-white mb-1">📦 Архів Угод</h2>
-        <p class="text-xs text-gray-400">Історичні дані та аналітика за весь період</p>
-      </div>
-      <div id="archiveContent" class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
-        <!-- Вміст архіву генерується динамично -->
-      </div>
+      <div id="archiveContainer"></div>
     </section>
 
-    <!-- PAGE 3: FORECAST -->
+    <!-- PAGE 3: FORECAST (НОВА СТОРІНКА ДЛЯ FORECAST.JS) -->
     <section id="pageForecast" class="page-tab space-y-6 hidden">
       <div class="glass-card p-5 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
         <h2 class="text-base font-bold text-white mb-1">🔮 Прогнозування Продажів</h2>
-        <p class="text-xs text-gray-400">Математична модель лінійної регресії на основі обсягів та динаміки продажів</p>
+        <p class="text-xs text-gray-400">Розрахунок тренду лінійної регресії за даними глобального архіву</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
