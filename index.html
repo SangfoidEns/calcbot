@@ -53,13 +53,13 @@
       </div>
 
       <nav class="flex gap-2">
-        <button id="tabDashboard" class="px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
+        <button id="tabDashboard" type="button" class="px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
           Дашборд
         </button>
-        <button id="tabAnalytics" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
+        <button id="tabAnalytics" type="button" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
           Архів & Аналітика
         </button>
-        <button id="tabForecast" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
+        <button id="tabForecast" type="button" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
           🔮 Прогноз
         </button>
       </nav>
@@ -115,7 +115,7 @@
           <div class="bg-brandCard/90 p-4 rounded-2xl border border-brandBorder space-y-3">
             <h2 class="text-xs font-bold uppercase text-gray-400">Ввід текстового логу (Поточний блок)</h2>
             <textarea id="rawInput" rows="8" placeholder="Встав сюди журнал..." class="w-full bg-brandDark p-3 rounded-xl border border-brandBorder text-xs font-mono focus:border-neonGreen focus:outline-none transition"></textarea>
-            <button id="btnCalculate" class="w-full py-2.5 bg-neonGreen/20 text-neonGreen border border-neonGreen/40 rounded-xl font-bold text-xs uppercase hover:bg-neonGreen/30 transition">
+            <button id="btnCalculate" type="button" class="w-full py-2.5 bg-neonGreen/20 text-neonGreen border border-neonGreen/40 rounded-xl font-bold text-xs uppercase hover:bg-neonGreen/30 transition">
               Обробити та зберегти в Архів
             </button>
           </div>
@@ -169,7 +169,7 @@
               <input type="text" id="newCatName" placeholder="Категорія" class="w-1/2 p-1.5 bg-brandDark rounded-xl border border-brandBorder text-xs uppercase text-white">
               <input type="number" id="newCatCost" placeholder="Ціна €" class="w-1/2 p-1.5 bg-brandDark rounded-xl border border-brandBorder text-xs text-white">
             </div>
-            <button id="btnAddPurchase" class="w-full py-1.5 bg-neonYellow/20 text-neonYellow border border-neonYellow/40 rounded-xl text-xs font-bold">Зберегти ціну</button>
+            <button id="btnAddPurchase" type="button" class="w-full py-1.5 bg-neonYellow/20 text-neonYellow border border-neonYellow/40 rounded-xl text-xs font-bold">Зберегти ціну</button>
           </div>
 
         </div>
@@ -233,17 +233,17 @@
 
         <div class="flex flex-wrap gap-2 items-center">
           <div class="flex gap-1 bg-brandDark p-1 rounded-xl border border-brandBorder">
-            <button data-period="day" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">День</button>
-            <button data-period="week" class="btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">Тиждень</button>
-            <button data-period="month" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Місяць</button>
-            <button data-period="all" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Весь час</button>
+            <button type="button" data-period="day" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">День</button>
+            <button type="button" data-period="week" class="btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">Тиждень</button>
+            <button type="button" data-period="month" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Місяць</button>
+            <button type="button" data-period="all" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Весь час</button>
           </div>
 
-          <button id="btnExportTxt" class="px-4 py-1.5 text-xs font-bold rounded-xl bg-neonBlue/20 text-neonBlue border border-neonBlue/40 hover:bg-neonBlue/30 transition flex items-center gap-1">
+          <button id="btnExportTxt" type="button" class="px-4 py-1.5 text-xs font-bold rounded-xl bg-neonBlue/20 text-neonBlue border border-neonBlue/40 hover:bg-neonBlue/30 transition flex items-center gap-1">
             📄 Завантажити TXT
           </button>
           
-          <button id="btnClearArchive" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition">
+          <button id="btnClearArchive" type="button" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition">
             🗑️ Очистити архів
           </button>
         </div>
@@ -331,7 +331,6 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Завтра -->
         <div class="bg-brandCard/90 p-5 rounded-2xl border border-brandBorder space-y-3">
           <span class="text-xs font-bold text-neonBlue uppercase">Завтра (1 день)</span>
           <div>
@@ -341,7 +340,6 @@
           </div>
         </div>
 
-        <!-- Тиждень -->
         <div class="bg-brandCard/90 p-5 rounded-2xl border border-brandBorder space-y-3">
           <span class="text-xs font-bold text-neonGreen uppercase">Наступні 7 днів</span>
           <div>
@@ -351,7 +349,6 @@
           </div>
         </div>
 
-        <!-- Місяць -->
         <div class="bg-brandCard/90 p-5 rounded-2xl border border-brandBorder space-y-3">
           <span class="text-xs font-bold text-neonYellow uppercase">Наступні 30 днів</span>
           <div>
@@ -361,7 +358,6 @@
           </div>
         </div>
 
-        <!-- Рік -->
         <div class="bg-brandCard/90 p-5 rounded-2xl border border-neonPurple/50 space-y-3">
           <span class="text-xs font-bold text-neonPurple uppercase">Рік (365 днів)</span>
           <div>
