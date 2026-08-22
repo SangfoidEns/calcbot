@@ -90,13 +90,13 @@ export function parseRecordDateTime(timeStr) {
 }
 
 function generateDedupeHash(cat, client, gramm, money, time) {
-  const raw = `${(cat||'').trim().toLowerCase()}_${(client||'').trim().toLowerCase()}_${(gramm||'').trim()}_${(money||'').trim()}_${(time||'').trim()}`;
+  const cleanStr = `${cat.trim()}_${client.trim()}_${gramm.trim()}_${money.trim()}_${time.trim()}`.toLowerCase();
   let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+  for (let i = 0; i < cleanStr.length; i++) {
+    hash = ((hash << 5) - hash) + cleanStr.charCodeAt(i);
     hash |= 0;
   }
-  return `rec_${Math.abs(hash)}`;
+  return `rec_${Math.abs(hash)}_${cleanStr.length}`;
 }
 
 export function parseLogs(rawText) {
@@ -114,7 +114,7 @@ export function parseLogs(rawText) {
         lines[i+2].toLowerCase() === 'gramm' && 
         lines[i+3] === '€') {
       currentCategory = line.toUpperCase();
-      i += 4;
+      i += 5;
       continue;
     }
 
