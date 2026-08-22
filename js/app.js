@@ -1,4 +1,4 @@
-import { parseLogs } from './parser.js';
+import { parseLogs } from '../parser.js';
 import { 
   setCurrentUserId, 
   savePurchases, 
@@ -10,17 +10,16 @@ import {
   saveGlobalArchive,
   loadGlobalArchive,
   clearGlobalArchive
-} from './store.js';
+} from '../store.js';
 import { 
   filterRecordsByPeriod, 
   groupRecordsByTimeSlot, 
   getTopClients, 
   calculateWeeklyHeatmap, 
   safeParseDate 
-} from './analytics.js';
-import { generateForecasts } from './forecast.js';
-import { getTelegramUser } from './telegram.js';
-import { exportArchiveToTxt } from './export.js';
+} from '../analytics.js';
+import { getTelegramUser } from '../telegram.js';
+import { exportArchiveToTxt } from '../export.js';
 
 let currentUser = null;
 let purchases = {};
@@ -28,7 +27,6 @@ let myExpenses = [];
 let currentRecordsBatch = [];
 let globalArchiveRecords = [];
 let currentPeriod = 'week';
-let activeTabIdx = 0;
 
 let chartRevenueInstance = null;
 let chartWeightInstance = null;
@@ -36,6 +34,7 @@ let chartBubbleInstance = null;
 
 const categoryColorMap = {};
 function getCategoryColor(categoryName) {
+  if (!categoryName) categoryName = 'UNCATEGORIZED';
   if (!categoryColorMap[categoryName]) {
     let hash = 0;
     for (let i = 0; i < categoryName.length; i++) {
@@ -59,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
   globalArchiveRecords = loadGlobalArchive();
 
   initNavigation();
-  initSwipeNavigation();
   initPurchasesUI();
   initQuickButtons();
   initMyExpensesEvents();
@@ -74,16 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCalc = document.getElementById('btnCalculate');
   if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
 
-  const btnClearInput = document.getElementById('btnClearInput');
-  if (btnClearInput && rawInputEl) {
-    btnClearInput.addEventListener('click', () => {
-      rawInputEl.value = '';
-      currentRecordsBatch = [];
-      processCurrentInput();
-      rawInputEl.focus();
-    });
-  }
-
   const btnAddPur = document.getElementById('btnAddPurchase');
   if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
 
@@ -93,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (confirm('Дійсно очистити весь глобальний архів?')) {
         clearGlobalArchive();
         globalArchiveRecords = [];
+        processCurrentInput();
         renderAnalyticsPage();
       }
     });
@@ -105,11 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.btn-period').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      const target = e.currentTarget;
       document.querySelectorAll('.btn-period').forEach(b => {
         b.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
       });
-      e.target.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-      currentPeriod = e.target.getAttribute('data-period');
+      target.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+      currentPeriod = target.getAttribute('data-period');
       renderAnalyticsPage();
     });
   });
@@ -135,57 +125,34 @@ function initUserSession() {
   }
 }
 
-function setActiveTab(index) {
-  activeTabIdx = index;
-  
-  document.getElementById('pageDashboard')?.classList.toggle('hidden', index !== 0);
-  document.getElementById('pageAnalytics')?.classList.toggle('hidden', index !== 1);
-  document.getElementById('pageForecast')?.classList.toggle('hidden', index !== 2);
-
-  const btnDash = document.getElementById('tabDashboard');
-  const btnAnal = document.getElementById('tabAnalytics');
-  const btnFore = document.getElementById('tabForecast');
-
-  if (btnDash) btnDash.className = index === 0 ? 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all' : 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all';
-  if (btnAnal) btnAnal.className = index === 1 ? 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all' : 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all';
-  if (btnFore) btnFore.className = index === 2 ? 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all' : 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all';
-
-  if (index === 1) renderAnalyticsPage();
-  if (index === 2) renderForecastPage();
-}
-
 function initNavigation() {
-  document.getElementById('tabDashboard')?.addEventListener('click', () => setActiveTab(0));
-  document.getElementById('tabAnalytics')?.addEventListener('click', () => setActiveTab(1));
-  document.getElementById('tabForecast')?.addEventListener('click', () => setActiveTab(2));
-}
+  const tabDashboard = document.getElementById('tabDashboard');
+  const tabAnalytics = document.getElementById('tabAnalytics');
+  const pageDashboard = document.getElementById('pageDashboard');
+  const pageAnalytics = document.getElementById('pageAnalytics');
 
-function initSwipeNavigation() {
-  let touchStartX = 0;
-  let touchStartY = 0;
-  const container = document.getElementById('swipeContainer');
-  if (!container) return;
+  if (!tabDashboard || !tabAnalytics || !pageDashboard || !pageAnalytics) return;
 
-  container.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-  }, { passive: true });
+  tabDashboard.addEventListener('click', () => {
+    pageDashboard.classList.remove('hidden');
+    pageAnalytics.classList.add('hidden');
+    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
+  });
 
-  container.addEventListener('touchend', e => {
-    const diffX = e.changedTouches[0].screenX - touchStartX;
-    const diffY = e.changedTouches[0].screenY - touchStartY;
-
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
-      if (diffX < 0 && activeTabIdx < 2) setActiveTab(activeTabIdx + 1);
-      if (diffX > 0 && activeTabIdx > 0) setActiveTab(activeTabIdx - 1);
-    }
-  }, { passive: true });
+  tabAnalytics.addEventListener('click', () => {
+    pageAnalytics.classList.remove('hidden');
+    pageDashboard.classList.add('hidden');
+    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
+    renderAnalyticsPage();
+  });
 }
 
 function initQuickButtons() {
   document.querySelectorAll('.btn-quick-expense').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const name = e.target.getAttribute('data-name') || e.target.innerText.replace(/[^a-zA-Z]/g, '').trim();
+      const name = e.currentTarget.getAttribute('data-name');
       const noteInput = document.getElementById('myExpenseNote');
       const amountInput = document.getElementById('myExpenseAmount');
       if (noteInput) noteInput.value = name;
@@ -233,13 +200,13 @@ function renderMyExpensesList() {
     totalCustom += item.amount;
     const isInc = item.amount > 0;
     return `
-      <div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-xl border border-glassBorder text-[11px]">
+      <div class="flex justify-between items-center bg-brandDark p-1.5 rounded border border-brandBorder text-[11px]">
         <span class="text-gray-300">${item.note}</span>
         <div class="flex items-center gap-2">
           <span class="font-mono font-bold ${isInc ? 'text-emerald-400' : 'text-neonRed'}">
             ${isInc ? '+' : ''}${item.amount} €
           </span>
-          <button data-idx="${idx}" class="btn-del-expense text-gray-500 hover:text-red-400 font-bold">✕</button>
+          <button data-idx="${idx}" class="btn-del-expense text-gray-500 hover:text-red-400 font-bold px-1">✕</button>
         </div>
       </div>
     `;
@@ -250,7 +217,7 @@ function renderMyExpensesList() {
 
   document.querySelectorAll('.btn-del-expense').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const idx = parseInt(e.target.getAttribute('data-idx'), 10);
+      const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
       saveMyExpenses(myExpenses);
       processCurrentInput();
@@ -273,7 +240,7 @@ function processCurrentInput() {
 
   currentRecordsBatch.forEach(r => {
     if (r.category && r.category !== 'UNCATEGORIZED' && purchases[r.category] === undefined) {
-      purchases[r.category] = { costPer100g: 600, totalGramsPurchased: 0 };
+      purchases[r.category] = 600;
       savePurchases(purchases);
     }
   });
@@ -304,8 +271,7 @@ function processCurrentInput() {
     totalExactWeight += r.exactGramm;
     totalBonusWeight += r.bonusGramm;
 
-    const purObj = purchases[r.category];
-    const costFor100g = typeof purObj === 'object' ? (purObj.costPer100g || 0) : (purObj || 0);
+    const costFor100g = purchases[r.category] || 0;
     const costPerExactGram = costFor100g / 110; 
     const costPerRawGram = costFor100g / 100;
 
@@ -350,7 +316,11 @@ function processCurrentInput() {
   setTxt('kpiFactNetProfit', `${factNetProfit.toFixed(1)} €`);
 
   setTxt('kpiCashCard', `${totalCash.toFixed(0)} / ${totalCard.toFixed(0)} €`);
+  setTxt('kpiCostOfGoods', `${totalCostOfGoods.toFixed(1)} €`);
   setTxt('kpiActiveDebt', `${totalActiveDebt.toFixed(1)} €`);
+  setTxt('kpiExactWeight', `${totalExactWeight.toFixed(2)} г`);
+  setTxt('kpiBonusWeight', `${totalBonusWeight.toFixed(2)} г`);
+  setTxt('kpiDeals', currentRecordsBatch.length);
 
   setTxt('myCardTotal', `${totalCard.toFixed(1)} €`);
   setTxt('myBonusCostTotal', `${totalBonusCost.toFixed(1)} €`);
@@ -360,8 +330,10 @@ function processCurrentInput() {
   renderDebts(clientDebtsMap);
   renderCurrentTable(currentRecordsBatch);
 
-  if (activeTabIdx === 1) renderAnalyticsPage();
-  if (activeTabIdx === 2) renderForecastPage();
+  const pageAnalytics = document.getElementById('pageAnalytics');
+  if (pageAnalytics && !pageAnalytics.classList.contains('hidden')) {
+    renderAnalyticsPage();
+  }
 }
 
 function renderTopClients() {
@@ -370,75 +342,50 @@ function renderTopClients() {
 
   const topList = getTopClients(currentRecordsBatch, 3);
   if (topList.length === 0) {
-    container.innerHTML = '<p class="text-xs text-gray-500">Немає даних</p>';
+    container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по поточній таблиці</p>';
     return;
   }
 
-  container.innerHTML = topList.map((c, i) => {
-    const clientDeals = currentRecordsBatch
-      .filter(r => (r.clientName || '').toLowerCase() === c.clientName.toLowerCase())
-      .slice(-3)
-      .reverse();
-
-    return `
-      <details class="group bg-slate-900/60 rounded-2xl border border-glassBorder overflow-hidden transition">
-        <summary class="flex justify-between items-center p-3 cursor-pointer select-none">
-          <div>
-            <span class="text-xs font-bold text-white">${i + 1}. ${c.clientName}</span>
-            <span class="ml-2 text-[10px] bg-tgBlue/20 text-tgBlue px-2 py-0.5 rounded-full font-mono">${c.dealsCount} угод</span>
-          </div>
-          <div class="text-xs font-mono font-bold text-neonGreen">
-            ${c.totalSpent.toFixed(1)} € / ${c.totalWeight.toFixed(1)}г
-          </div>
-        </summary>
-        <div class="px-3 pb-3 space-y-1.5 pt-1 border-t border-glassBorder/50 bg-slate-950/40">
-          <div class="text-[10px] text-gray-400 font-bold uppercase">Останні 3 покупки:</div>
-          ${clientDeals.length > 0 ? clientDeals.map(d => `
-            <div class="flex justify-between text-[11px] font-mono text-gray-300">
-              <span>${d.category} (${d.exactGramm.toFixed(1)}г)</span>
-              <span class="text-white font-bold">${d.eurPaid} €</span>
-            </div>
-          `).join('') : '<div class="text-[10px] text-gray-500">Немає деталей</div>'}
-        </div>
-      </details>
-    `;
-  }).join('');
+  container.innerHTML = topList.map((c, i) => `
+    <div class="bg-brandDark p-3 rounded-xl border border-brandBorder flex flex-col justify-between space-y-1">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-bold text-white">${i + 1}. ${c.clientName}</span>
+        <span class="text-[10px] bg-neonBlue/20 text-neonBlue font-mono px-1.5 py-0.5 rounded">${c.dealsCount} угод</span>
+      </div>
+      <div class="text-[11px] font-mono flex justify-between pt-1">
+        <span class="text-neonGreen font-bold">${c.totalSpent.toFixed(1)} €</span>
+        <span class="text-gray-400">${c.totalWeight.toFixed(1)} г</span>
+      </div>
+    </div>
+  `).join('');
 }
 
 function initPurchasesUI() {
   const container = document.getElementById('purchasesList');
   if (!container) return;
-  container.innerHTML = Object.keys(purchases).map(cat => {
-    const p = purchases[cat];
-    const cost = typeof p === 'object' ? p.costPer100g : p;
-    const grams = typeof p === 'object' ? (p.totalGramsPurchased || 0) : 0;
-    return `
-      <div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-xl border border-glassBorder">
-        <span class="font-bold text-gray-300">${cat}</span>
-        <span class="font-mono text-neonYellow">${cost} € / 100g ${grams ? `(${grams}г)` : ''}</span>
-      </div>
-    `;
-  }).join('');
+  container.innerHTML = Object.keys(purchases).map(cat => `
+    <div class="flex justify-between items-center bg-brandDark p-1.5 rounded border border-brandBorder">
+      <span class="font-bold text-gray-300">${cat}</span>
+      <span class="font-mono text-neonYellow">${purchases[cat]} € / 100g</span>
+    </div>
+  `).join('');
 }
 
 function handleAddPurchase() {
   const nameInput = document.getElementById('newCatName');
   const costInput = document.getElementById('newCatCost');
-  const gramsInput = document.getElementById('newCatGrams');
   if (!nameInput || !costInput) return;
 
   const name = nameInput.value.trim().toUpperCase();
   const cost = parseFloat(costInput.value);
-  const grams = gramsInput ? parseFloat(gramsInput.value) || 0 : 0;
 
   if (name && !isNaN(cost) && cost > 0) {
-    purchases[name] = { costPer100g: cost, totalGramsPurchased: grams };
+    purchases[name] = cost;
     savePurchases(purchases);
     initPurchasesUI();
     processCurrentInput();
     nameInput.value = '';
     costInput.value = '';
-    if (gramsInput) gramsInput.value = '';
   }
 }
 
@@ -470,21 +417,23 @@ function renderCurrentTable(records) {
   const tbody = document.getElementById('recordsTableBody');
   if (!tbody) return;
 
-  tbody.innerHTML = records.map(r => {
-    const isHighValue = (r.eurPaid || 0) >= 50;
-    const rowClass = isHighValue ? 'bg-amber-500/10 font-bold border-l-2 border-amber-400' : 'hover:bg-white/5';
-    const color = getCategoryColor(r.category);
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Немає даних у поточному блоці</td></tr>';
+    return;
+  }
 
+  tbody.innerHTML = records.map(r => {
+    const color = getCategoryColor(r.category);
     return `
-      <tr class="${rowClass} transition border-b border-glassBorder/30">
-        <td class="p-2.5 font-bold" style="color: ${color.text}">${r.category || 'UNCATEGORIZED'}</td>
-        <td class="p-2.5 text-gray-200">${r.clientName || 'Гість'}</td>
-        <td class="p-2.5 font-mono">${r.baseGramm || 0}${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
-        <td class="p-2.5 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
-        <td class="p-2.5">${r.isCard ? '<span class="text-tgBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
-        <td class="p-2.5 ${isHighValue ? 'text-amber-300 font-extrabold text-sm' : ''}">${r.eurPaid || 0} €</td>
-        <td class="p-2.5 text-neonYellow">${r.rawDebtText || '-'}</td>
-        <td class="p-2.5 text-gray-400 text-[10px]">${r.timeStr || '--:--'}</td>
+      <tr class="hover:bg-brandDark/40 transition">
+        <td class="p-2 font-bold" style="color: ${color.text}">${r.category}</td>
+        <td class="p-2 text-gray-200">${r.clientName}</td>
+        <td class="p-2 font-mono">${r.baseGramm} ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
+        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
+        <td class="p-2 font-bold">${r.eurPaid} €</td>
+        <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
+        <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
       </tr>
     `;
   }).join('');
@@ -497,7 +446,9 @@ function renderAnalyticsPage() {
   const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
 
   const sortedArchive = [...filtered].sort((a, b) => {
-    if (a.category !== b.category) return a.category.localeCompare(b.category);
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category);
+    }
     return safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj);
   });
 
@@ -535,11 +486,12 @@ function renderAnalyticsPage() {
         }]
       },
       options: { 
-        responsive: true, maintainAspectRatio: false,
+        responsive: true, 
+        maintainAspectRatio: false,
         plugins: { legend: { labels: { color: '#fff' } } },
         scales: {
-          x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
         }
       }
     });
@@ -551,14 +503,19 @@ function renderAnalyticsPage() {
       type: 'bar',
       data: {
         labels,
-        datasets: [{ label: 'Точна вага (г)', data: weights, backgroundColor: '#9D00FF' }]
+        datasets: [{
+          label: 'Точна вага (г)',
+          data: weights,
+          backgroundColor: '#9D00FF'
+        }]
       },
       options: { 
-        responsive: true, maintainAspectRatio: false,
+        responsive: true, 
+        maintainAspectRatio: false,
         plugins: { legend: { labels: { color: '#fff' } } },
         scales: {
-          x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
         }
       }
     });
@@ -566,29 +523,49 @@ function renderAnalyticsPage() {
 
   if (canvasB) {
     const ctxB = canvasB.getContext('2d');
-    const bubbleData = filtered.map(r => {
-      const d = safeParseDate(r.parsedDateObj);
-      const hours = d.getHours() + (d.getMinutes() / 60);
-      return { x: parseFloat(hours.toFixed(2)), y: r.eurPaid || 0, r: Math.min(Math.max((r.exactGramm || 0) * 1.2, 3), 20) };
-    }).filter(item => !isNaN(item.x) && !isNaN(item.y));
+    
+    const bubbleData = filtered
+      .map(r => {
+        const d = safeParseDate(r.parsedDateObj);
+        const hours = d.getHours() + (d.getMinutes() / 60);
+        const money = r.eurPaid || 0;
+        const weight = r.exactGramm || 0;
+
+        const radius = Math.min(Math.max(weight * 1.2, 3), 20);
+
+        return { x: parseFloat(hours.toFixed(2)), y: money, r: radius };
+      })
+      .filter(item => !isNaN(item.x) && !isNaN(item.y));
 
     chartBubbleInstance = new Chart(ctxB, {
       type: 'bubble',
       data: {
         datasets: [{
-          label: 'Угоди (Година vs Оплата vs Вага)',
+          label: 'Угоди (X: Година, Y: Оплата €, R: Вага)',
           data: bubbleData,
-          backgroundColor: 'rgba(36, 161, 222, 0.4)',
-          borderColor: '#24A1DE',
+          backgroundColor: 'rgba(0, 240, 255, 0.4)',
+          borderColor: '#00F0FF',
           borderWidth: 1
         }]
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { labels: { color: '#fff' } } },
         scales: {
-          x: { title: { display: true, text: 'Година доби (0-24h)', color: '#9ca3af' }, min: 0, max: 24, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          y: { title: { display: true, text: 'Сума (€)', color: '#9ca3af' }, beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          x: { 
+            title: { display: true, text: 'Година доби (0-24h)', color: '#9ca3af' }, 
+            min: 0, 
+            max: 24,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          },
+          y: { 
+            title: { display: true, text: 'Сума (€)', color: '#9ca3af' }, 
+            beginAtZero: true,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          }
         }
       }
     });
@@ -602,10 +579,14 @@ function renderHeatmap() {
 
   const monthVal = selectEl ? selectEl.value : 'all';
   const { matrix, maxVal } = calculateWeeklyHeatmap(globalArchiveRecords, monthVal);
+
   const dayLabels = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   
-  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1"><div></div>`;
-  for (let h = 0; h < 24; h++) html += `<div>${h}h</div>`;
+  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1">`;
+  html += `<div></div>`;
+  for (let h = 0; h < 24; h++) {
+    html += `<div>${h}h</div>`;
+  }
   html += `</div>`;
 
   dayLabels.forEach((dayName, dayIdx) => {
@@ -616,11 +597,15 @@ function renderHeatmap() {
       const val = matrix[dayIdx][h];
       const intensity = maxVal > 0 ? (val / maxVal) : 0;
       const alpha = val > 0 ? Math.max(intensity, 0.15).toFixed(2) : 0.03;
-      const bgColor = val > 0 ? `rgba(0, 255, 136, ${alpha})` : `rgba(255, 255, 255, 0.03)`;
+      
+      const bgColor = val > 0 
+        ? `rgba(0, 255, 136, ${alpha})` 
+        : `rgba(31, 41, 55, 0.3)`;
+
       const textColor = intensity > 0.5 ? '#000' : '#fff';
 
       html += `
-        <div class="h-7 rounded flex items-center justify-center text-[9px] transition hover:scale-110 cursor-pointer border border-glassBorder"
+        <div class="h-7 rounded flex items-center justify-center text-[9px] transition hover:scale-110 cursor-pointer border border-brandBorder/30"
              style="background-color: ${bgColor}; color: ${textColor};"
              title="${dayName}, ${h}:00 - Виручка: ${val.toFixed(1)} €">
           ${val > 0 ? `${Math.round(val)}` : ''}
@@ -650,32 +635,20 @@ function renderArchiveTable(records) {
   tbody.innerHTML = records.map(r => {
     const color = getCategoryColor(r.category);
     return `
-      <tr class="hover:bg-white/5 transition border-b border-glassBorder">
-        <td class="p-2 font-bold" style="color: ${color.text}">${r.category}</td>
+      <tr class="hover:bg-brandDark/40 transition border-b border-brandBorder/50">
+        <td class="p-2 font-bold" style="color: ${color.text}">
+          <span class="px-2 py-0.5 rounded text-[10px]" style="background: ${color.bg}; border: 1px solid ${color.border}">
+            ${r.category}
+          </span>
+        </td>
         <td class="p-2 text-gray-200">${r.clientName}</td>
         <td class="p-2 font-mono">${r.rawGramm}</td>
-        <td class="p-2 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
-        <td class="p-2">${r.isCard ? '<span class="text-tgBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
+        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
         <td class="p-2 font-bold">${r.eurPaid} €</td>
         <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
         <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
       </tr>
     `;
   }).join('');
-}
-
-function renderForecastPage() {
-  const forecasts = generateForecasts(globalArchiveRecords);
-
-  const updateCard = (prefix, data) => {
-    const rev = document.getElementById(`${prefix}Rev`);
-    const det = document.getElementById(`${prefix}Details`);
-    if (rev) rev.innerText = `${data.revenue} €`;
-    if (det) det.innerText = `${data.weight}г • ${data.deals} угод`;
-  };
-
-  updateCard('fcDay', forecasts.tomorrow);
-  updateCard('fcWeek', forecasts.week);
-  updateCard('fcMonth', forecasts.month);
-  updateCard('fcYear', forecasts.year);
 }
