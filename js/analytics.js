@@ -1,10 +1,9 @@
-// Допоміжна функція для безпечного парсингу дати
 export function safeParseDate(dateStr) {
+  if (!dateStr) return new Date();
   const d = new Date(dateStr);
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
-// Фільтрація за періодами
 export function filterRecordsByPeriod(records, period) {
   const now = new Date();
   return records.filter(r => {
@@ -18,7 +17,6 @@ export function filterRecordsByPeriod(records, period) {
   });
 }
 
-// Безпечне групування для лінійних/стовпчастих графіків
 export function groupRecordsByTimeSlot(records, period) {
   const grouped = {};
 
@@ -45,7 +43,6 @@ export function groupRecordsByTimeSlot(records, period) {
     grouped[key].weight += (r.exactGramm || 0);
   });
 
-  // Сортуємо ключі за хронологією
   const sortedKeys = Object.keys(grouped).sort((a, b) => grouped[a].timestamp - grouped[b].timestamp);
   
   const result = {};
@@ -72,21 +69,18 @@ export function getTopClients(records, limit = 3) {
     .slice(0, limit);
 }
 
-// Розрахунок даних для Heatmap (День тижня [0-6] x Година [0-23])
 export function calculateWeeklyHeatmap(records, selectedMonth = 'all') {
-  // Matrix 7x24 initialized with 0
   const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));
   let maxVal = 0;
 
   records.forEach(r => {
     const d = safeParseDate(r.parsedDateObj);
     
-    // Фільтр по місяцю (якщо обрано конкретний)
     if (selectedMonth !== 'all' && d.getMonth().toString() !== selectedMonth.toString()) {
       return;
     }
 
-    const dayIndex = d.getDay(); // 0 - Нд, 1 - Пн...
+    const dayIndex = d.getDay();
     const hour = d.getHours();
 
     matrix[dayIndex][hour] += (r.eurPaid || 0);
