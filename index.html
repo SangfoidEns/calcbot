@@ -2,342 +2,301 @@
 <html lang="uk" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>HMS2.0 Analytics</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HMS 2.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="styles.css">
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            glassBg: 'rgba(17, 24, 39, 0.65)',
-            glassBorder: 'rgba(255, 255, 255, 0.08)',
-            tgBlue: '#24A1DE',
+            brandDark: '#0A0D14',
+            brandCard: '#121824',
+            brandBorder: '#1E293B',
             neonGreen: '#00FF88',
+            neonBlue: '#00F0FF',
             neonPurple: '#9D00FF',
-            neonYellow: '#FFE600',
-            neonRed: '#FF0055'
+            neonRed: '#FF0055',
+            neonYellow: '#FFE600'
           }
         }
       }
     }
   </script>
+  <style>
+    body { background-color: #0A0D14; color: #E2E8F0; font-family: system-ui, -apple-system, sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #0A0D14; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
+  </style>
 </head>
-<body class="bg-black text-gray-100 font-sans min-h-screen select-none overflow-x-hidden antialiased">
-
-  <div class="neon-wall"></div>
-
-  <!-- Header -->
-  <header class="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/60 border-b border-glassBorder px-4 py-3">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2">
-        <div class="w-2.5 h-2.5 rounded-full bg-neonGreen animate-pulse"></div>
-        <h1 class="text-base font-bold tracking-tight text-white">HMS2.0 <span class="text-neonGreen text-xs">Engine</span></h1>
-      </div>
-
-      <!-- Navigation Tabs -->
-      <nav id="navTabs" class="flex bg-slate-900/80 p-1 rounded-2xl border border-glassBorder text-xs font-semibold">
-        <button id="tabDashboard" class="px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all">Журнал</button>
-        <button id="tabAnalytics" class="px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all">Архів</button>
-        <button id="tabForecast" class="px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all">Прогноз</button>
-      </nav>
-
-      <!-- Telegram Profile -->
-      <div id="userProfileWidget" class="flex items-center gap-2 bg-slate-900/50 px-2.5 py-1 rounded-full border border-glassBorder">
-        <div id="userAvatar" class="w-6 h-6 rounded-full bg-tgBlue/30 text-tgBlue font-bold flex items-center justify-center text-[10px]">?</div>
-        <div class="flex flex-col text-left">
-          <span id="userName" class="text-xs font-medium text-gray-200 hidden sm:inline">User</span>
-          <span id="userHandle" class="text-[9px] font-mono text-gray-400 hidden sm:inline">@id</span>
+<body class="p-2 sm:p-4 text-xs">
+  <div class="max-w-7xl mx-auto space-y-4">
+    
+    <!-- HEADER -->
+    <header class="flex justify-between items-center bg-brandCard p-3 rounded-2xl border border-brandBorder shadow-lg">
+      <div class="flex items-center space-x-3">
+        <div id="userAvatar" class="w-10 h-10 rounded-full bg-neonGreen/20 border border-neonGreen flex items-center justify-center font-bold text-neonGreen text-sm">
+          U
+        </div>
+        <div>
+          <h1 id="userName" class="font-bold text-sm text-white leading-none">Користувач</h1>
+          <p id="userHandle" class="text-[10px] text-gray-400 mt-1">@username</p>
         </div>
       </div>
-    </div>
-  </header>
-
-  <!-- Swipe & Content Container -->
-  <main id="swipeContainer" class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+      <div class="flex gap-2">
+        <button id="tabDashboard" class="px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">
+          Дашборд
+        </button>
+        <button id="tabAnalytics" class="px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">
+          Аналітика
+        </button>
+      </div>
+    </header>
 
     <!-- PAGE 1: DASHBOARD -->
-    <section id="pageDashboard" class="page-tab space-y-6">
+    <div id="pageDashboard" class="space-y-4">
       
-      <!-- KPI Grid -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
-          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Виручка</span>
-          <p id="kpiRevenue" class="text-xl font-mono font-bold text-neonGreen">0 €</p>
-          <p class="text-[10px] text-gray-400 mt-1">Отримано: <span id="kpiFactReceived" class="text-emerald-400 font-bold">0 €</span></p>
+      <!-- KPI GRID -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        <div class="bg-brandCard p-3 rounded-xl border border-brandBorder">
+          <p class="text-[10px] text-gray-400 uppercase font-semibold">Виручка</p>
+          <p id="kpiRevenue" class="text-base font-extrabold text-neonGreen font-mono">0.0 €</p>
         </div>
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
-          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Прибуток</span>
-          <p id="kpiNetProfit" class="text-xl font-mono font-bold text-tgBlue">0 €</p>
-          <p class="text-[10px] text-gray-400 mt-1">Факт: <span id="kpiFactNetProfit" class="text-tgBlue font-bold">0 €</span></p>
+        <div class="bg-brandCard p-3 rounded-xl border border-brandBorder">
+          <p class="text-[10px] text-gray-400 uppercase font-semibold">Факт отримано</p>
+          <p id="kpiFactReceived" class="text-base font-extrabold text-white font-mono">0.0 €</p>
         </div>
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
-          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Готівка / Карта</span>
-          <p id="kpiCashCard" class="text-xl font-mono font-bold text-white">0 / 0 €</p>
+        <div class="bg-brandCard p-3 rounded-xl border border-brandBorder">
+          <p class="text-[10px] text-gray-400 uppercase font-semibold">Чистий прибуток</p>
+          <p id="kpiNetProfit" class="text-base font-extrabold text-neonBlue font-mono">0.0 €</p>
         </div>
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
-          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Активний Борг</span>
-          <p id="kpiActiveDebt" class="text-xl font-mono font-bold text-neonRed">0 €</p>
+        <div class="bg-brandCard p-3 rounded-xl border border-brandBorder">
+          <p class="text-[10px] text-gray-400 uppercase font-semibold">Факт чистий</p>
+          <p id="kpiFactNetProfit" class="text-base font-extrabold text-neonPurple font-mono">0.0 €</p>
+        </div>
+        <div class="bg-brandCard p-3 rounded-xl border border-brandBorder">
+          <p class="text-[10px] text-gray-400 uppercase font-semibold">Готівка / Карта</p>
+          <p id="kpiCashCard" class="text-xs font-bold text-gray-200 mt-1 font-mono">0 / 0 €</p>
+        </div>
+        <div class="bg-brandCard p-3 rounded-xl border border-brandBorder">
+          <p class="text-[10px] text-gray-400 uppercase font-semibold">Ссобівартість</p>
+          <p id="kpiCostOfGoods" class="text-xs font-bold text-neonRed mt-1 font-mono">0.0 €</p>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel -->
-        <div class="space-y-6">
-          
-          <!-- Text Input -->
-          <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3 relative">
-            <div class="flex justify-between items-center">
-              <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400">Ввід текстового логу</h2>
-              <button id="btnClearInput" class="text-gray-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-5 h-5 flex items-center justify-center text-xs transition">✕</button>
+      <!-- MAIN INPUT & CONTROLS -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <!-- INPUT AREA -->
+        <div class="md:col-span-2 bg-brandCard p-4 rounded-2xl border border-brandBorder flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-bold text-white text-xs uppercase tracking-wider">Вставте логи</label>
+              <button id="btnCalculate" class="bg-neonGreen text-black font-extrabold px-4 py-1.5 rounded-lg hover:bg-emerald-400 transition">
+                Розрахувати
+              </button>
             </div>
-            <textarea id="rawInput" rows="7" placeholder="Встав сюди журнал..." class="w-full bg-slate-950/60 p-3 rounded-2xl border border-glassBorder text-xs font-mono text-white focus:border-tgBlue focus:outline-none transition resize-none"></textarea>
-            <button id="btnCalculate" class="w-full py-3 bg-tgBlue/20 text-tgBlue hover:bg-tgBlue/30 border border-tgBlue/40 rounded-2xl font-bold text-xs uppercase transition">
-              Обробити та Зберегти
+            <textarea id="rawInput" class="w-full h-40 bg-brandDark border border-brandBorder rounded-xl p-3 text-gray-200 font-mono text-xs focus:outline-none focus:border-neonGreen custom-scrollbar" placeholder="Вставте сирий текст з логами сюди..."></textarea>
+          </div>
+          
+          <!-- QUICK STATS FOOTER -->
+          <div class="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-brandBorder/60 text-center">
+            <div>
+              <span class="text-[9px] text-gray-400 block">Точна вага</span>
+              <span id="kpiExactWeight" class="font-mono font-bold text-neonGreen">0 г</span>
+            </div>
+            <div>
+              <span class="text-[9px] text-gray-400 block">Бонусна вага</span>
+              <span id="kpiBonusWeight" class="font-mono font-bold text-neonPurple">0 г</span>
+            </div>
+            <div>
+              <span class="text-[9px] text-gray-400 block">Активні борги</span>
+              <span id="kpiActiveDebt" class="font-mono font-bold text-neonRed">0 €</span>
+            </div>
+            <div>
+              <span class="text-[9px] text-gray-400 block">Угод</span>
+              <span id="kpiDeals" class="font-mono font-bold text-white">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL: EXPENSES & PRICING -->
+        <div class="space-y-4">
+          
+          <!-- CUSTOM EXPENSES -->
+          <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-3">
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-white">Мої витрати / Доходи</h3>
+              <span id="myTotalDisplay" class="font-mono font-bold text-neonYellow">0.0 €</span>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-1.5">
+              <button data-name="🛒 Rewe" class="btn-quick-expense bg-brandDark hover:bg-brandBorder border border-brandBorder p-1.5 rounded text-left text-[11px] truncate">🛒 Rewe</button>
+              <button data-name="⛽️ Заправка" class="btn-quick-expense bg-brandDark hover:bg-brandBorder border border-brandBorder p-1.5 rounded text-left text-[11px] truncate">⛽️ Заправка</button>
+              <button data-name="🍔 Їжа" class="btn-quick-expense bg-brandDark hover:bg-brandBorder border border-brandBorder p-1.5 rounded text-left text-[11px] truncate">🍔 Їжа</button>
+              <button data-name="🏠 Оренда" class="btn-quick-expense bg-brandDark hover:bg-brandBorder border border-brandBorder p-1.5 rounded text-left text-[11px] truncate">🏠 Оренда</button>
+            </div>
+
+            <div class="flex gap-2">
+              <input id="myExpenseNote" type="text" placeholder="Опис" class="w-1/2 bg-brandDark border border-brandBorder rounded p-1.5 text-gray-200">
+              <input id="myExpenseAmount" type="number" placeholder="Сума €" class="w-1/2 bg-brandDark border border-brandBorder rounded p-1.5 text-gray-200 font-mono">
+            </div>
+
+            <div class="flex gap-2">
+              <button id="btnAddExpense" class="w-1/2 bg-neonRed/20 hover:bg-neonRed/30 border border-neonRed/50 text-neonRed font-bold py-1 rounded">
+                - Витрата
+              </button>
+              <button id="btnAddIncome" class="w-1/2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-400 font-bold py-1 rounded">
+                + Дохід
+              </button>
+            </div>
+
+            <div id="myExpensesList" class="space-y-1 max-h-28 overflow-y-auto custom-scrollbar pt-1"></div>
+          </div>
+
+          <!-- PURCHASES / PRICING -->
+          <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-2">
+            <h3 class="font-bold text-white">Закупки (За 100г)</h3>
+            <div id="purchasesList" class="space-y-1 max-h-24 overflow-y-auto custom-scrollbar"></div>
+            <div class="flex gap-2 pt-1">
+              <input id="newCatName" type="text" placeholder="Категорія" class="w-1/2 bg-brandDark border border-brandBorder rounded p-1 text-gray-200 uppercase">
+              <input id="newCatCost" type="number" placeholder="Закупка €" class="w-1/2 bg-brandDark border border-brandBorder rounded p-1 text-gray-200 font-mono">
+            </div>
+            <button id="btnAddPurchase" class="w-full bg-brandBorder hover:bg-gray-700 text-white font-bold py-1 rounded">
+              Зберегти закупку
             </button>
           </div>
 
-          <!-- Section "МОЇ" (Custom Expenses) -->
-          <div class="glass-card p-4 rounded-3xl border border-neonPurple/40 bg-glassBg backdrop-blur-xl space-y-3">
-            <div class="flex justify-between items-center border-b border-glassBorder pb-2">
-              <h2 class="text-xs font-bold uppercase text-neonPurple tracking-wider">Категорія "МОЇ"</h2>
-              <span class="text-xs font-mono font-bold text-white" id="myTotalDisplay">0 €</span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
-              <div class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder">
-                <span class="text-gray-400 block">💳 На карті:</span>
-                <span id="myCardTotal" class="text-tgBlue font-bold text-xs">0 €</span>
-              </div>
-              <div class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder">
-                <span class="text-gray-400 block">🎁 Бонуси:</span>
-                <span id="myBonusCostTotal" class="text-neonPurple font-bold text-xs">0 €</span>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <span class="text-[10px] text-gray-400 uppercase font-bold">Швидкий розхід:</span>
-              <div class="grid grid-cols-3 gap-1.5">
-                <button type="button" data-name="Rewe" class="btn-quick-expense py-1 bg-slate-950/60 hover:bg-slate-900 border border-glassBorder rounded-xl text-[11px] font-semibold text-gray-300">🛒 Rewe</button>
-                <button type="button" data-name="Restoran" class="btn-quick-expense py-1 bg-slate-950/60 hover:bg-slate-900 border border-glassBorder rounded-xl text-[11px] font-semibold text-gray-300">🍕 Restoran</button>
-                <button type="button" data-name="Tabak" class="btn-quick-expense py-1 bg-slate-950/60 hover:bg-slate-900 border border-glassBorder rounded-xl text-[11px] font-semibold text-gray-300">🚬 Tabak</button>
-              </div>
-            </div>
-
-            <div class="space-y-2 pt-1">
-              <div class="flex gap-2">
-                <input type="text" id="myExpenseNote" placeholder="Опис" class="w-3/5 p-2 bg-slate-950/60 rounded-xl border border-glassBorder text-xs text-white">
-                <input type="number" id="myExpenseAmount" placeholder="Сума €" class="w-2/5 p-2 bg-slate-950/60 rounded-xl border border-glassBorder text-xs text-white">
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <button type="button" id="btnAddIncome" class="py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold">+ Дохід</button>
-                <button type="button" id="btnAddExpense" class="py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold">- Розхід</button>
-              </div>
-            </div>
-
-            <div id="myExpensesList" class="space-y-1.5 max-h-28 overflow-y-auto text-xs pt-2"></div>
-          </div>
-
-          <!-- Purchases Section -->
-          <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3">
-            <h2 class="text-xs font-bold uppercase text-neonYellow tracking-wider">Закупівлі (Ціна & Грами)</h2>
-            <div id="purchasesList" class="space-y-2 text-xs"></div>
-            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-glassBorder">
-              <input type="text" id="newCatName" placeholder="Категорія" class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder text-xs uppercase text-white">
-              <input type="number" id="newCatCost" placeholder="€ / 100g" class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder text-xs text-white">
-              <input type="number" id="newCatGrams" placeholder="Грам (г)" class="bg-slate-950/60 p-2 rounded-xl border border-glassBorder text-xs text-white">
-            </div>
-            <button id="btnAddPurchase" class="w-full py-2 bg-neonYellow/20 text-neonYellow border border-neonYellow/40 rounded-xl text-xs font-bold">Зберегти Закупівлю</button>
-          </div>
-
-        </div>
-
-        <!-- Right Panel -->
-        <div class="lg:col-span-2 space-y-6">
-          
-          <!-- Top Clients -->
-          <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3">
-            <h3 class="text-xs font-bold uppercase text-tgBlue tracking-wider">🏆 Топ Клієнти</h3>
-            <div id="topClientsList" class="space-y-2"></div>
-          </div>
-
-          <!-- Debts Widgets -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-2">
-              <h3 class="text-xs font-bold uppercase text-neonRed">Активні Борги</h3>
-              <div id="activeDebtsList" class="space-y-1 text-xs max-h-36 overflow-y-auto font-mono"></div>
-            </div>
-            <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-2">
-              <h3 class="text-xs font-bold uppercase text-emerald-400">Погашені Борги</h3>
-              <div id="repaidDebtsList" class="space-y-1 text-xs max-h-36 overflow-y-auto font-mono"></div>
-            </div>
-          </div>
-
-          <!-- Current Table -->
-          <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-3">
-            <div class="flex justify-between items-center">
-              <h2 class="text-xs font-bold uppercase text-gray-400 tracking-wider">Поточний Журнал Операцій</h2>
-              <span class="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">≥ 50€ підсвічено</span>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="border-b border-glassBorder text-gray-400 uppercase text-[10px]">
-                    <th class="p-2.5">Сорт</th>
-                    <th class="p-2.5">Клієнт</th>
-                    <th class="p-2.5">Вага</th>
-                    <th class="p-2.5">Точно</th>
-                    <th class="p-2.5">Тип</th>
-                    <th class="p-2.5">Оплата</th>
-                    <th class="p-2.5">Борг</th>
-                    <th class="p-2.5">Час</th>
-                  </tr>
-                </thead>
-                <tbody id="recordsTableBody" class="divide-y divide-glassBorder font-mono"></tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-    <!-- PAGE 2: ANALYTICS & ARCHIVE -->
-    <section id="pageAnalytics" class="page-tab space-y-6 hidden">
-      <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div>
-          <h2 class="text-sm font-bold uppercase text-white">Глобальний Архів та Візуалізатор</h2>
-          <p class="text-[10px] text-gray-400">Загалом в архіві: <span id="archiveTotalCount" class="font-mono text-neonGreen font-bold">0</span> угод</p>
-        </div>
-
-        <div class="flex flex-wrap gap-2 items-center">
-          <div class="flex gap-1 bg-slate-950/60 p-1 rounded-xl border border-glassBorder">
-            <button data-period="day" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">День</button>
-            <button data-period="week" class="btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">Тиждень</button>
-            <button data-period="month" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Місяць</button>
-            <button data-period="all" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Весь час</button>
-          </div>
-
-          <button id="btnExportTxt" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-tgBlue/20 text-tgBlue border border-tgBlue/40 hover:bg-tgBlue/30 transition">
-            📄 TXT
-          </button>
-          
-          <button id="btnClearArchive" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition">
-            🗑️ Очистити
-          </button>
         </div>
       </div>
 
-      <!-- Chart.js Canvas Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl h-72">
+      <!-- TOP CLIENTS & DEBTS -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-2">
+          <h3 class="font-bold text-white">Топ-3 Клієнти</h3>
+          <div id="topClientsList" class="grid grid-cols-3 gap-2"></div>
+        </div>
+
+        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-2">
+          <h3 class="font-bold text-neonRed">Нові борги</h3>
+          <div id="activeDebtsList" class="space-y-1 max-h-28 overflow-y-auto custom-scrollbar text-gray-300"></div>
+        </div>
+
+        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-2">
+          <h3 class="font-bold text-emerald-400">Погашення боргів</h3>
+          <div id="repaidDebtsList" class="space-y-1 max-h-28 overflow-y-auto custom-scrollbar text-gray-300"></div>
+        </div>
+      </div>
+
+      <!-- CURRENT BATCH TABLE -->
+      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-3">
+        <h3 class="font-bold text-white">Поточна таблиця логів</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-brandDark text-gray-400 border-b border-brandBorder">
+              <tr>
+                <th class="p-2">Категорія</th>
+                <th class="p-2">Клієнт</th>
+                <th class="p-2">Вага</th>
+                <th class="p-2">Точна вага</th>
+                <th class="p-2">Тип</th>
+                <th class="p-2">Сума</th>
+                <th class="p-2">Борг</th>
+                <th class="p-2">Час</th>
+              </tr>
+            </thead>
+            <tbody id="recordsTableBody" class="divide-y divide-brandBorder/40"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PAGE 2: ANALYTICS -->
+    <div id="pageAnalytics" class="space-y-4 hidden">
+      
+      <!-- ANALYTICS CONTROLS -->
+      <div class="flex justify-between items-center bg-brandCard p-3 rounded-2xl border border-brandBorder">
+        <div class="flex items-center space-x-2">
+          <span class="text-gray-400">Всього в архіві:</span>
+          <span id="archiveTotalCount" class="font-bold text-neonGreen font-mono">0</span>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+          <button data-period="week" class="btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition">Тиждень</button>
+          <button data-period="month" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Місяць</button>
+          <button data-period="all" class="btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition">Все</button>
+          <button id="btnExportTxt" class="bg-brandBorder hover:bg-gray-700 px-3 py-1 rounded text-xs font-bold text-white transition ml-2">Експорт TXT</button>
+          <button id="btnClearArchive" class="bg-neonRed/20 hover:bg-neonRed/30 border border-neonRed/50 text-neonRed px-3 py-1 rounded text-xs font-bold transition">Очистити архів</button>
+        </div>
+      </div>
+
+      <!-- CHARTS SECTION -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder h-64">
           <canvas id="chartTimeRevenue"></canvas>
         </div>
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl h-72">
+        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder h-64">
           <canvas id="chartTimeWeight"></canvas>
         </div>
       </div>
 
-      <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl h-80">
-        <h3 class="text-xs font-bold uppercase text-neonPurple mb-2">Бульбашковий графік угод (Час vs Оплата vs Вага)</h3>
-        <div class="h-64">
-          <canvas id="chartBubbleDeals"></canvas>
-        </div>
+      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder h-64">
+        <canvas id="chartBubbleDeals"></canvas>
       </div>
 
       <!-- HEATMAP -->
-      <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-4">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <div>
-            <h3 class="text-xs font-bold uppercase text-neonGreen">🔥 Теплова Карта Активності</h3>
-            <p class="text-[10px] text-gray-400">Показує суму виручки за годинами доби протягом тижня/місяця</p>
-          </div>
-          
-          <div class="flex items-center gap-2">
-            <label for="heatmapMonthSelect" class="text-[10px] text-gray-400 font-bold uppercase">Місяць:</label>
-            <select id="heatmapMonthSelect" class="bg-slate-950/60 text-xs font-mono text-white p-1.5 rounded-xl border border-glassBorder focus:outline-none">
-              <option value="all">Усі місяці</option>
-              <option value="0">Січень</option>
-              <option value="1">Лютий</option>
-              <option value="2">Березень</option>
-              <option value="3">Квітень</option>
-              <option value="4">Травень</option>
-              <option value="5">Червень</option>
-              <option value="6">Липень</option>
-              <option value="7">Серпень</option>
-              <option value="8">Вересень</option>
-              <option value="9">Жовтень</option>
-              <option value="10">Листопад</option>
-              <option value="11">Грудень</option>
-            </select>
-          </div>
+      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-2">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-white">Теплова карта активності (Виручка)</h3>
+          <select id="heatmapMonthSelect" class="bg-brandDark border border-brandBorder text-gray-200 p-1 rounded">
+            <option value="all">Усі місяці</option>
+            <option value="0">Січень</option>
+            <option value="1">Лютий</option>
+            <option value="2">Березень</option>
+            <option value="3">Квітень</option>
+            <option value="4">Травень</option>
+            <option value="5">Червень</option>
+            <option value="6">Липень</option>
+            <option value="7">Серпень</option>
+            <option value="8">Вересень</option>
+            <option value="9">Жовтень</option>
+            <option value="10">Листопад</option>
+            <option value="11">Грудень</option>
+          </select>
         </div>
-
-        <div class="overflow-x-auto">
-          <div id="heatmapGrid" class="min-w-[650px] space-y-1 font-mono text-[10px]"></div>
-        </div>
+        <div id="heatmapGrid" class="overflow-x-auto p-2"></div>
       </div>
 
-      <!-- Archive Table -->
-      <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-4">
-        <h3 class="text-xs font-bold uppercase text-neonGreen">Архівні Записи</h3>
+      <!-- GLOBAL ARCHIVE TABLE -->
+      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-3">
+        <h3 class="font-bold text-white">Глобальний архів записів</h3>
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr class="border-b border-glassBorder text-gray-400 uppercase text-[10px]">
-                <th class="p-2">Сорт</th>
+          <table class="w-full text-left text-xs">
+            <thead class="bg-brandDark text-gray-400 border-b border-brandBorder">
+              <tr>
+                <th class="p-2">Категорія</th>
                 <th class="p-2">Клієнт</th>
-                <th class="p-2">Вага</th>
-                <th class="p-2">Точно</th>
+                <th class="p-2">Введена вага</th>
+                <th class="p-2">Точна вага</th>
                 <th class="p-2">Тип</th>
-                <th class="p-2">Оплата</th>
+                <th class="p-2">Сума</th>
                 <th class="p-2">Борг</th>
-                <th class="p-2">Дата та Час</th>
+                <th class="p-2">Час</th>
               </tr>
             </thead>
-            <tbody id="archiveTableBody" class="divide-y divide-glassBorder font-mono"></tbody>
+            <tbody id="archiveTableBody" class="divide-y divide-brandBorder/40"></tbody>
           </table>
         </div>
       </div>
-    </section>
 
-    <!-- PAGE 3: FORECAST -->
-    <section id="pageForecast" class="page-tab space-y-6 hidden">
-      <div class="glass-card p-5 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl">
-        <h2 class="text-base font-bold text-white mb-1">🔮 Прогнозування Продажів</h2>
-        <p class="text-xs text-gray-400">Розрахунок тренду лінійної регресії за даними глобального архіву</p>
-      </div>
+    </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-2">
-          <span class="text-xs text-tgBlue font-bold uppercase">Завтра</span>
-          <div class="text-2xl font-mono font-extrabold text-white" id="fcDayRev">0 €</div>
-          <div class="text-xs font-mono text-gray-400" id="fcDayDetails">0г • 0 угод</div>
-        </div>
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-2">
-          <span class="text-xs text-neonGreen font-bold uppercase">Тиждень</span>
-          <div class="text-2xl font-mono font-extrabold text-white" id="fcWeekRev">0 €</div>
-          <div class="text-xs font-mono text-gray-400" id="fcWeekDetails">0г • 0 угод</div>
-        </div>
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-2">
-          <span class="text-xs text-neonPurple font-bold uppercase">Місяць</span>
-          <div class="text-2xl font-mono font-extrabold text-white" id="fcMonthRev">0 €</div>
-          <div class="text-xs font-mono text-gray-400" id="fcMonthDetails">0г • 0 угод</div>
-        </div>
-        <div class="glass-card p-4 rounded-3xl border border-glassBorder bg-glassBg backdrop-blur-xl space-y-2">
-          <span class="text-xs text-neonYellow font-bold uppercase">Рік</span>
-          <div class="text-2xl font-mono font-extrabold text-white" id="fcYearRev">0 €</div>
-          <div class="text-xs font-mono text-gray-400" id="fcYearDetails">0г • 0 угод</div>
-        </div>
-      </div>
-    </section>
+  </div>
 
-  </main>
-
-  <script type="module" src="app.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
