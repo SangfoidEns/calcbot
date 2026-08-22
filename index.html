@@ -195,7 +195,7 @@
             </div>
           </div>
 
-          <!-- Debts Breakdown -->
+          <!-- Debts Breakdown (ВИДАЛЕНО БЛОК АВАНС) -->
           <div class="space-y-4">
             <div class="bg-brandCard/90 p-4 rounded-2xl border border-red-500/20">
               <h3 class="text-xs font-bold uppercase text-neonRed mb-2">🔴 Активні борги клієнтів</h3>
@@ -205,11 +205,6 @@
             <div class="bg-brandCard/90 p-4 rounded-2xl border border-emerald-500/20">
               <h3 class="text-xs font-bold uppercase text-emerald-400 mb-2">🟢 Погашення боргів</h3>
               <div id="repaidDebtsList" class="text-xs space-y-1.5 max-h-36 overflow-y-auto text-gray-300"><p class="text-gray-500">Немає даних</p></div>
-            </div>
-
-            <div class="bg-brandCard/90 p-4 rounded-2xl border border-cyan-500/20">
-              <h3 class="text-xs font-bold uppercase text-neonBlue mb-2">⚡ Аванси / Мої</h3>
-              <div id="advancesList" class="text-xs space-y-1.5 max-h-36 overflow-y-auto text-gray-300"><p class="text-gray-500">Немає даних</p></div>
             </div>
           </div>
 
@@ -232,8 +227,12 @@
               <p class="text-[9px] text-gray-500 mt-0.5">(Виручка − Борги − Витрати)</p>
             </div>
 
+            <!-- Збільшений чистий прибуток + Додано % Заробітку (Маржинальність) -->
             <div class="bg-brandCard/90 p-3 rounded-xl neon-border-blue col-span-2 sm:col-span-1">
-              <p class="text-[10px] font-medium text-neonBlue">Чистий прибуток</p>
+              <div class="flex justify-between items-center">
+                <p class="text-[10px] font-medium text-neonBlue">Чистий прибуток</p>
+                <span id="kpiMarginBadge" class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-neonBlue/20 text-neonBlue border border-neonBlue/30">0.0%</span>
+              </div>
               <div class="mt-1 space-y-0.5">
                 <div class="flex justify-between items-baseline gap-1">
                   <span class="text-[9px] text-gray-400">З угод:</span>
@@ -276,7 +275,7 @@
               <div class="h-44 relative"><canvas id="weightBarChart"></canvas></div>
             </div>
             <div class="bg-brandCard/90 p-4 rounded-2xl neon-border">
-              <h3 class="text-xs font-bold text-gray-300 uppercase mb-2">Виручка за сортами (€)</h3>
+              <h3 class="text-xs font-bold text-gray-300 uppercase mb-2">Виручка та Маржа за сортами (€)</h3>
               <div class="h-44 relative"><canvas id="revenuePieChart"></canvas></div>
             </div>
           </div>
@@ -317,7 +316,7 @@
             <div class="bg-brandCard/90 p-5 rounded-2xl neon-border space-y-4">
               <div class="flex justify-between items-center">
                 <h2 class="text-xs font-bold tracking-wider uppercase text-neonGreen flex items-center gap-2">🌿 Статистика сортів</h2>
-                <span class="text-[10px] text-gray-400 font-mono">Обсяги та виручка</span>
+                <span class="text-[10px] text-gray-400 font-mono">Обсяги та прибутковість</span>
               </div>
 
               <div class="overflow-x-auto">
@@ -326,13 +325,14 @@
                     <tr>
                       <th class="p-2.5">Сорт</th>
                       <th class="p-2.5 text-center">Угод</th>
-                      <th class="p-2.5 text-neonGreen">Точна вага (г)</th>
-                      <th class="p-2.5 text-white">Виручка (€)</th>
+                      <th class="p-2.5 text-neonGreen">Точна вага</th>
+                      <th class="p-2.5 text-white">Виручка</th>
                       <th class="p-2.5 text-neonBlue">Прибуток (€)</th>
+                      <th class="p-2.5 text-neonYellow text-right">% Маржі</th>
                     </tr>
                   </thead>
                   <tbody id="varietyStatsTableBody" class="divide-y divide-brandBorder/60">
-                    <tr><td colspan="5" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>
+                    <tr><td colspan="6" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -382,12 +382,13 @@
                 <th class="p-3">Клієнт</th>
                 <th class="p-3">Базова вага</th>
                 <th class="p-3 text-neonGreen">Точна вага (*1.1)</th>
-                <th class="p-3 text-neonRed">Ціна за 1г</th>
-                <th class="p-3 text-neonRed">Собівартість (€)</th>
+                <th class="p-3 text-neonRed">Ціна 1г</th>
+                <th class="p-3 text-neonRed">Собівартість</th>
                 <th class="p-3 font-bold text-white">Виручка (€)</th>
-                <th class="p-3 text-neonBlue">Прибуток угоди (€)</th>
+                <th class="p-3 text-neonBlue">Прибуток (€)</th>
+                <th class="p-3 text-neonYellow">% Заробітку</th>
                 <th class="p-3 text-neonYellow">🎁 Бонус</th>
-                <th class="p-3">Запис боргу/мої/карта</th>
+                <th class="p-3">Борг/Карта</th>
                 <th class="p-3">Час</th>
                 <th class="p-3 text-center">Дії</th>
               </tr>
@@ -413,7 +414,6 @@
           <p class="text-xs text-gray-400">Оберіть часовий інтервал для аналізу всіх збережених угод</p>
         </div>
 
-        <!-- Кнопки періодів -->
         <div class="flex flex-wrap gap-1.5 bg-brandDark p-1.5 rounded-xl border border-brandBorder font-mono text-xs">
           <button onclick="setArchivePeriod('day')" id="periodBtn_day" class="px-3 py-1.5 rounded-lg text-gray-300 hover:text-white transition">День</button>
           <button onclick="setArchivePeriod('week')" id="periodBtn_week" class="px-3 py-1.5 rounded-lg text-gray-300 hover:text-white transition">Тиждень</button>
@@ -423,8 +423,8 @@
         </div>
       </div>
 
-      <!-- KPI Блоки Архіву -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+      <!-- KPI Блоки Архіву + Маржа % -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div class="bg-brandCard/90 p-3 rounded-xl neon-border">
           <p class="text-[10px] font-medium text-neonGreen">Виручка періоду</p>
           <p class="text-sm sm:text-lg font-black text-neonGreen mt-1" id="archKpiRevenue">0.00 €</p>
@@ -432,6 +432,10 @@
         <div class="bg-brandCard/90 p-3 rounded-xl neon-border-blue">
           <p class="text-[10px] font-medium text-neonBlue">Прибуток періоду</p>
           <p class="text-sm sm:text-lg font-black text-neonBlue mt-1" id="archKpiProfit">0.00 €</p>
+        </div>
+        <div class="bg-brandCard/90 p-3 rounded-xl neon-border-purple">
+          <p class="text-[10px] font-medium text-neonYellow">Середня Маржа %</p>
+          <p class="text-sm sm:text-lg font-black text-neonYellow mt-1" id="archKpiMargin">0.0%</p>
         </div>
         <div class="bg-brandCard/90 p-3 rounded-xl neon-border">
           <p class="text-[10px] font-medium text-gray-400">Точна вага (г)</p>
@@ -441,7 +445,7 @@
           <p class="text-[10px] font-medium text-neonYellow">Угод в архіві</p>
           <p class="text-sm sm:text-lg font-black text-neonYellow mt-1" id="archKpiDeals">0</p>
         </div>
-        <div class="bg-brandCard/90 p-3 rounded-xl neon-border-purple col-span-2 sm:col-span-1">
+        <div class="bg-brandCard/90 p-3 rounded-xl neon-border-purple">
           <p class="text-[10px] font-medium text-neonPurple">Середній чек</p>
           <p class="text-sm sm:text-lg font-black text-neonPurple mt-1" id="archKpiAvgDeal">0.00 €</p>
         </div>
@@ -449,8 +453,6 @@
 
       <!-- Графіки архіву -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- Графік 1: Динаміка за датами -->
         <div class="bg-brandCard/90 p-4 rounded-2xl neon-border">
           <h3 class="text-xs font-bold text-gray-300 uppercase mb-3 flex items-center justify-between">
             <span>📈 Динаміка Виручки та Прибутку</span>
@@ -459,7 +461,6 @@
           <div class="h-56 relative"><canvas id="archiveTimeChart"></canvas></div>
         </div>
 
-        <!-- Графік 2: Порівняння періодів -->
         <div class="bg-brandCard/90 p-4 rounded-2xl neon-border-blue">
           <h3 class="text-xs font-bold text-gray-300 uppercase mb-3 flex items-center justify-between">
             <span>📊 Порівняння Періодів (День / Тижд / Міс / Рік)</span>
@@ -468,18 +469,15 @@
           <div class="h-56 relative"><canvas id="archivePeriodComparisonChart"></canvas></div>
         </div>
 
-        <!-- Графік 3: Частка прибутку по сортах -->
         <div class="bg-brandCard/90 p-4 rounded-2xl neon-border-purple">
           <h3 class="text-xs font-bold text-gray-300 uppercase mb-3">🌿 Частка прибутку за сортами</h3>
           <div class="h-56 relative"><canvas id="archiveVarietyProfitChart"></canvas></div>
         </div>
 
-        <!-- Графік 4: Топ покупці (Бар) -->
         <div class="bg-brandCard/90 p-4 rounded-2xl neon-border">
           <h3 class="text-xs font-bold text-gray-300 uppercase mb-3">👑 Обсяг покупок топ-клієнтів (г)</h3>
           <div class="h-56 relative"><canvas id="archiveTopBuyersChart"></canvas></div>
         </div>
-
       </div>
 
       <!-- СЕКЦІЯ: БАГАТО ТАБЛИЦЬ З РІЗНИМИ СОРТАМИ -->
@@ -525,13 +523,14 @@
                 <th class="p-3 text-neonRed">Собівартість (€)</th>
                 <th class="p-3 font-bold text-white">Виручка (€)</th>
                 <th class="p-3 text-neonBlue">Прибуток (€)</th>
+                <th class="p-3 text-neonYellow">% Заробітку</th>
                 <th class="p-3 text-neonYellow">🎁 Бонус</th>
-                <th class="p-3">Запис боргу/мої</th>
+                <th class="p-3">Запис боргу/карта</th>
                 <th class="p-3">Час</th>
               </tr>
             </thead>
             <tbody id="archiveMasterTableBody" class="divide-y divide-brandBorder">
-              <tr><td colspan="11" class="p-4 text-center text-gray-500">Немає збережених угод в архіві</td></tr>
+              <tr><td colspan="12" class="p-4 text-center text-gray-500">Немає збережених угод в архіві</td></tr>
             </tbody>
           </table>
         </div>
@@ -540,11 +539,11 @@
     </div>
 
     <!-- ========================================================= -->
-    <!-- PAGE 3: ПРОГНОЗУВАННЯ ТА ПРОЄКЦІЯ ПРОДАЖІВ (НОВА СТОРІНКА)-->
+    <!-- PAGE 3: ПРОГНОЗУВАННЯ ТА ПРОЄКЦІЯ ПРОДАЖІВ                -->
     <!-- ========================================================= -->
     <div id="page3" class="space-y-6 hidden">
 
-      <!-- Інформаційний заголовок прогнозу -->
+      <!-- Інформаційний заголовок прогнозу + ОНОВЛЕНИЙ ІНТЕЛЕКТУАЛЬНИЙ БЛОК МОДЕЛЮВАННЯ -->
       <div class="bg-brandCard/90 p-5 rounded-2xl neon-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div class="flex items-center gap-2">
@@ -558,16 +557,19 @@
           </p>
         </div>
 
-        <!-- Перемикач Сценарію Прогнозу -->
-        <div class="flex items-center gap-2 bg-brandDark p-1.5 rounded-xl border border-brandBorder font-mono text-xs">
-          <span class="text-gray-400 font-bold px-2">Сценарій:</span>
-          <button onclick="setForecastMode(0.85, 'pessimistic')" id="forecastBtn_pessimistic" class="px-2.5 py-1 rounded-lg text-gray-400 hover:text-white transition">📉 Песимістичний (-15%)</button>
-          <button onclick="setForecastMode(1.0, 'base')" id="forecastBtn_base" class="px-2.5 py-1 rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 font-bold shadow-sm">⚖️ Базовий (100%)</button>
-          <button onclick="setForecastMode(1.15, 'optimistic')" id="forecastBtn_optimistic" class="px-2.5 py-1 rounded-lg text-gray-400 hover:text-white transition">📈 Оптимістичний (+15%)</button>
+        <!-- Оновлений інтелектуальний перемикач режимів прогнозування (Без слова "Сценарій") -->
+        <div class="flex items-center gap-1.5 bg-brandDark/90 p-1.5 rounded-xl border border-neonGreen/30 font-mono text-xs shadow-inner">
+          <span class="text-[10px] text-gray-400 font-bold px-2 flex items-center gap-1.5 uppercase tracking-wider border-r border-brandBorder/60 pr-3">
+            <span class="w-2 h-2 rounded-full bg-neonGreen animate-pulse"></span>
+            Режим Моделювання
+          </span>
+          <button onclick="setForecastMode(0.85, 'pessimistic')" id="forecastBtn_pessimistic" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition font-medium">📉 Песимістичний (-15%)</button>
+          <button onclick="setForecastMode(1.0, 'base')" id="forecastBtn_base" class="px-3 py-1.5 rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/50 font-bold shadow-sm">⚖️ Базовий (100%)</button>
+          <button onclick="setForecastMode(1.15, 'optimistic')" id="forecastBtn_optimistic" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition font-medium">📈 Оптимістичний (+15%)</button>
         </div>
       </div>
 
-      <!-- ПРОГНОЗНІ КАРТКИ ДЕНЬ / ТИЖДЕНЬ / МІСЯЦЬ -->
+      <!-- ПРОГНОЗНІ КАРТКИ ДЕНЬ / ТИЖДЕНЬ / МІСЯЦЬ (З % Маржі) -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <!-- Картка 1: ПРОГНОЗ НА 1 ДЕНЬ -->
@@ -587,7 +589,10 @@
             </div>
             <div class="flex justify-between items-baseline">
               <span class="text-xs text-gray-400">Очікуваний прибуток:</span>
-              <span class="text-base font-black text-neonBlue" id="fcDayProf">0.00 €</span>
+              <div class="text-right">
+                <span class="text-base font-black text-neonBlue" id="fcDayProf">0.00 €</span>
+                <span class="text-[10px] text-neonYellow ml-1 font-bold" id="fcDayMargin">(0%)</span>
+              </div>
             </div>
             <div class="flex justify-between items-baseline border-t border-brandBorder/50 pt-2">
               <span class="text-xs text-gray-400">Точна вага продажів:</span>
@@ -621,7 +626,10 @@
             </div>
             <div class="flex justify-between items-baseline">
               <span class="text-xs text-gray-400">Очікуваний прибуток:</span>
-              <span class="text-base font-black text-neonBlue" id="fcWeekProf">0.00 €</span>
+              <div class="text-right">
+                <span class="text-base font-black text-neonBlue" id="fcWeekProf">0.00 €</span>
+                <span class="text-[10px] text-neonYellow ml-1 font-bold" id="fcWeekMargin">(0%)</span>
+              </div>
             </div>
             <div class="flex justify-between items-baseline border-t border-brandBorder/50 pt-2">
               <span class="text-xs text-gray-400">Точна вага продажів:</span>
@@ -655,7 +663,10 @@
             </div>
             <div class="flex justify-between items-baseline">
               <span class="text-xs text-gray-400">Очікуваний прибуток:</span>
-              <span class="text-base font-black text-neonBlue" id="fcMonthProf">0.00 €</span>
+              <div class="text-right">
+                <span class="text-base font-black text-neonBlue" id="fcMonthProf">0.00 €</span>
+                <span class="text-[10px] text-neonYellow ml-1 font-bold" id="fcMonthMargin">(0%)</span>
+              </div>
             </div>
             <div class="flex justify-between items-baseline border-t border-brandBorder/50 pt-2">
               <span class="text-xs text-gray-400">Точна вага продажів:</span>
@@ -676,8 +687,6 @@
 
       <!-- ГРАФІКИ ПРОГНОЗУ -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        <!-- Графік 1: Порівняння часових горизонтів -->
         <div class="bg-brandCard/90 p-4 rounded-2xl neon-border">
           <h3 class="text-xs font-bold text-gray-300 uppercase mb-3 flex items-center justify-between">
             <span>📊 Проєкція Фінансів: День vs Тиждень vs Місяць</span>
@@ -686,7 +695,6 @@
           <div class="h-60 relative"><canvas id="forecastComparisonChart"></canvas></div>
         </div>
 
-        <!-- Графік 2: Прогнозний попит по сортах на місяць -->
         <div class="bg-brandCard/90 p-4 rounded-2xl neon-border-purple">
           <h3 class="text-xs font-bold text-gray-300 uppercase mb-3 flex items-center justify-between">
             <span>🌿 Прогнозний Попит за Сортами (г / Місяць)</span>
@@ -694,15 +702,14 @@
           </h3>
           <div class="h-60 relative"><canvas id="forecastVarietyDemandChart"></canvas></div>
         </div>
-
       </div>
 
-      <!-- ДЕТАЛЬНА ТАБЛИЦЯ ПРОГНОЗУ ЗА СОРТАМИ -->
+      <!-- ДЕТАЛЬНА ТАБЛИЦЯ ПРОГНОЗУ ЗА СОРТАМИ (+ МАРЖИНАЛЬНІСТЬ) -->
       <div class="bg-brandCard/90 p-5 rounded-2xl neon-border space-y-4">
         <div class="flex justify-between items-center flex-wrap gap-2">
           <div>
             <h2 class="text-sm font-bold tracking-wider uppercase text-neonGreen flex items-center gap-2">
-              📋 Прогнозні Потребi та Прибуток за Кожним Сортом
+              📋 Прогнозні Потребi, Прибуток та Маржа за Сортами
             </h2>
             <p class="text-[11px] text-gray-400">Обчислено на основі вашої історії закупівлі та середньої швидкості продажів</p>
           </div>
@@ -714,16 +721,17 @@
               <tr>
                 <th class="p-3">Сорт</th>
                 <th class="p-3">Продаж / День</th>
-                <th class="p-3 text-neonGreen">Прогноз 1 День (г)</th>
-                <th class="p-3 text-neonBlue">Прогноз 1 Тижд (г)</th>
-                <th class="p-3 text-neonPurple">Прогноз 1 Міс (г)</th>
-                <th class="p-3 text-white">Виручка (Місяць)</th>
-                <th class="p-3 text-neonBlue font-bold">Прибуток (Місяць)</th>
-                <th class="p-3 text-neonYellow">Реком. Закуп (Місяць)</th>
+                <th class="p-3 text-neonGreen">Прогноз 1 День</th>
+                <th class="p-3 text-neonBlue">Прогноз 1 Тижд</th>
+                <th class="p-3 text-neonPurple">Прогноз 1 Міс</th>
+                <th class="p-3 text-white">Виручка (Міс)</th>
+                <th class="p-3 text-neonBlue font-bold">Прибуток (Міс)</th>
+                <th class="p-3 text-neonYellow font-bold">% Заробітку</th>
+                <th class="p-3 text-neonYellow">Реком. Закуп</th>
               </tr>
             </thead>
             <tbody id="forecastVarietyTableBody" class="divide-y divide-brandBorder">
-              <tr><td colspan="8" class="p-4 text-center text-gray-500">Завантаження прогнозних даних...</td></tr>
+              <tr><td colspan="9" class="p-4 text-center text-gray-500">Завантаження прогнозних даних...</td></tr>
             </tbody>
           </table>
         </div>
@@ -740,7 +748,7 @@
 
     let activePage = 'page1';
     let currentArchivePeriod = 'all';
-    let currentForecastMultiplier = 1.0; // 1.0 = Base, 0.85 = Pessimistic, 1.15 = Optimistic
+    let currentForecastMultiplier = 1.0; 
 
     let currentUser = 'default_tg';
     let telegramUser = null;
@@ -1078,13 +1086,12 @@
     }
 
     function parseMoneyAndDebt(str) {
-      if (!str) return { eurPaid: 0, debtNew: 0, debtRepaid: 0, advance: 0, bonusGrams: 0, cardAmount: 0, rawDebtText: '' };
+      if (!str) return { eurPaid: 0, debtNew: 0, debtRepaid: 0, bonusGrams: 0, cardAmount: 0, rawDebtText: '' };
 
       const clean = str.toString().toLowerCase().replace(',', '.').trim();
       let eurPaid = 0;
       let debtNew = 0;
       let debtRepaid = 0;
-      let advance = 0;
       let bonusGrams = 0;
       let cardAmount = 0;
       let rawDebtText = clean;
@@ -1098,16 +1105,11 @@
 
       tokens.forEach(token => {
         if (token.includes('!') || token.includes('бонус') || token.includes('bonus')) {
-          // Ігноруємо бонус
+          // ignore bonus
         } else if (token.includes('карта') || token.includes('карту')) {
           const numMatch = token.match(/\d*\.?\d+/);
           if (numMatch && numMatch[0] !== '') {
             cardAmount += parseFloat(numMatch[0]);
-          }
-        } else if (token.includes('мої') || token.includes('мои')) {
-          const numMatch = token.match(/[-+]?\d*\.?\d+/);
-          if (numMatch && numMatch[0] !== '') {
-            advance += Math.abs(parseFloat(numMatch[0]));
           }
         } else if (token.includes('долг') || token.includes('борг')) {
           const numMatch = token.match(/[-+]?\d*\.?\d+/);
@@ -1127,7 +1129,7 @@
         }
       });
 
-      return { eurPaid, debtNew, debtRepaid, advance, bonusGrams, cardAmount, rawDebtText };
+      return { eurPaid, debtNew, debtRepaid, bonusGrams, cardAmount, rawDebtText };
     }
 
     function parseLogs(rawText) {
@@ -1147,7 +1149,6 @@
             lines[i+2].toLowerCase() === 'gramm' && 
             lines[i+3] === '€') {
           currentCategory = line.toUpperCase();
-          
           registerVariety(currentCategory);
 
           if (i + 4 < lines.length && (lines[i+4].includes('.') || lines[i+4].includes('/'))) {
@@ -1192,7 +1193,6 @@
               eurPaid: moneyData.eurPaid,
               debtNew: moneyData.debtNew,
               debtRepaid: moneyData.debtRepaid,
-              advance: moneyData.advance,
               bonusGrams: moneyData.bonusGrams,
               cardAmount: moneyData.cardAmount,
               rawDebtText: moneyData.rawDebtText,
@@ -1260,7 +1260,6 @@
 
       const clientNewDebts = {};
       const clientRepaidDebts = {};
-      const clientAdvances = {};
       const buyersMap = {};
       const categories = {};
 
@@ -1274,6 +1273,7 @@
         
         r.dealRevenue = r.baseGramm * 10;
         r.dealProfit = r.dealRevenue - r.dealCost;
+        r.marginPct = r.dealRevenue > 0 ? ((r.dealProfit / r.dealRevenue) * 100) : 0;
 
         if (r.cardAmount > 0) {
           totalCardAmount += r.cardAmount;
@@ -1301,7 +1301,6 @@
 
         if (r.debtNew > 0) clientNewDebts[r.clientName] = (clientNewDebts[r.clientName] || 0) + r.debtNew;
         if (r.debtRepaid > 0) clientRepaidDebts[r.clientName] = (clientRepaidDebts[r.clientName] || 0) + r.debtRepaid;
-        if (r.advance > 0) clientAdvances[r.clientName] = (clientAdvances[r.clientName] || 0) + r.advance;
 
         if (!categories[r.category]) {
           categories[r.category] = { deals: 0, baseGramm: 0, exactGramm: 0, revenue: 0, costOfGoods: 0, profit: 0 };
@@ -1315,7 +1314,7 @@
         categories[r.category].profit += r.dealProfit;
       });
 
-      // Авто-витрати
+      // Auto expenses
       Object.keys(customExpenseCategories).forEach(cat => {
         if (cat.startsWith('🎁 Бонус') || cat === 'KARTE') delete customExpenseCategories[cat];
       });
@@ -1327,7 +1326,6 @@
       renderExpenseCategories();
 
       const totalExpenses = Object.values(customExpenseCategories).reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
-
       document.getElementById('totalExpensesSumLabel').innerText = `${totalExpenses.toFixed(2)} €`;
 
       let totalActiveDebt = 0;
@@ -1346,6 +1344,7 @@
       const netProfitWithDebt = netProfitFinal - totalActiveDebt;
 
       const actualRevenue = totalGrossRevenue - totalActiveDebt - totalExpenses;
+      const globalMarginPct = totalGrossRevenue > 0 ? ((netProfitFinal / totalGrossRevenue) * 100) : 0;
 
       document.getElementById('kpiGrossRevenue').innerText = `${totalGrossRevenue.toFixed(2)} €`;
       document.getElementById('kpiRevenue').innerText = `${actualRevenue.toFixed(2)} €`;
@@ -1353,6 +1352,7 @@
       document.getElementById('kpiNetProfitRaw').innerText = `${netProfitRaw.toFixed(2)} €`;
       document.getElementById('kpiNetProfitFinal').innerText = `${netProfitFinal.toFixed(2)} €`;
       document.getElementById('kpiNetProfitWithDebt').innerText = `${netProfitWithDebt.toFixed(2)} €`;
+      document.getElementById('kpiMarginBadge').innerText = `${globalMarginPct.toFixed(1)}%`;
 
       document.getElementById('kpiCostOfGoods').innerText = `${totalCostOfGoods.toFixed(2)} €`;
       document.getElementById('kpiActiveDebt').innerText = `${totalActiveDebt.toFixed(2)} €`;
@@ -1361,7 +1361,6 @@
 
       renderDebtsList('activeDebtsList', clientActiveDebts, 'text-neonYellow', '-');
       renderDebtsList('repaidDebtsList', clientRepaidDebts, 'text-emerald-400', '+');
-      renderDebtsList('advancesList', clientAdvances, 'text-neonBlue', '⚡ ');
       renderVarietyStats(categories);
       renderTop5Buyers(buyersMap);
       renderTable(parsedRecordsGlobal);
@@ -1377,6 +1376,7 @@
 
     function renderDebtsList(elementId, debtObj, colorClass, prefix) {
       const container = document.getElementById(elementId);
+      if(!container) return;
       const keys = Object.keys(debtObj);
       if (keys.length === 0) {
         container.innerHTML = '<p class="text-gray-500">Немає даних</p>';
@@ -1395,13 +1395,14 @@
       const varieties = Object.keys(categories);
 
       if (varieties.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>';
         return;
       }
 
       tbody.innerHTML = varieties.map(varName => {
         const c = categories[varName];
         const style = getCategoryStyle(varName);
+        const marginPct = c.revenue > 0 ? ((c.profit / c.revenue) * 100) : 0;
         return `
           <tr class="hover:bg-brandDark/40 transition">
             <td class="p-2.5">
@@ -1413,6 +1414,7 @@
             <td class="p-2.5 font-mono font-bold text-neonGreen">${c.exactGramm.toFixed(2)} г</td>
             <td class="p-2.5 font-mono font-bold text-white">${c.revenue.toFixed(2)} €</td>
             <td class="p-2.5 font-mono font-bold text-neonBlue">${c.profit.toFixed(2)} €</td>
+            <td class="p-2.5 font-mono font-bold text-neonYellow text-right">${marginPct.toFixed(1)}%</td>
           </tr>
         `;
       }).join('');
@@ -1446,7 +1448,7 @@
     function renderTable(records) {
       const tbody = document.getElementById('recordsTableBody');
       if (records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>';
         return;
       }
 
@@ -1466,10 +1468,11 @@
             <td class="p-3 font-mono text-neonRed">${r.dealCost ? r.dealCost.toFixed(2) : '0.00'} €</td>
             <td class="p-3 font-mono font-bold text-white">${r.dealRevenue ? r.dealRevenue.toFixed(2) : '0.00'} €</td>
             <td class="p-3 font-mono font-bold text-neonBlue">${r.dealProfit ? r.dealProfit.toFixed(2) : '0.00'} €</td>
+            <td class="p-3 font-mono font-bold text-neonYellow">${r.marginPct ? r.marginPct.toFixed(1) : '0.0'}%</td>
             <td class="p-3 font-mono font-bold ${r.bonusGrams > 0 ? 'text-neonYellow' : 'text-gray-500'}">
               ${r.bonusGrams > 0 ? `${r.bonusGrams}г (${r.bonusCostEur.toFixed(2)}€)` : '-'}
             </td>
-            <td class="p-3 font-mono text-[11px] ${r.cardAmount > 0 ? 'text-neonBlue font-bold' : r.advance > 0 ? 'text-neonBlue' : r.debtNew > 0 ? 'text-neonYellow' : r.debtRepaid > 0 ? 'text-emerald-400' : 'text-gray-500'}">
+            <td class="p-3 font-mono text-[11px] ${r.cardAmount > 0 ? 'text-neonBlue font-bold' : r.debtNew > 0 ? 'text-neonYellow' : r.debtRepaid > 0 ? 'text-emerald-400' : 'text-gray-500'}">
               ${r.rawDebtText || '-'}
             </td>
             <td class="p-3 font-mono text-gray-400 text-[11px]">${r.timeStr}</td>
@@ -1699,8 +1702,11 @@
         weight += r.exactGramm || 0;
       });
 
+      const marginPct = rev > 0 ? ((prof / rev) * 100) : 0;
+
       document.getElementById('archKpiRevenue').innerText = `${rev.toFixed(2)} €`;
       document.getElementById('archKpiProfit').innerText = `${prof.toFixed(2)} €`;
+      document.getElementById('archKpiMargin').innerText = `${marginPct.toFixed(1)}%`;
       document.getElementById('archKpiWeight').innerText = `${weight.toFixed(2)} г`;
       document.getElementById('archKpiDeals').innerText = deals;
       document.getElementById('archKpiAvgDeal').innerText = deals > 0 ? `${(rev / deals).toFixed(2)} €` : '0.00 €';
@@ -1710,7 +1716,7 @@
 
       renderIndividualVarietyTables(parsedRecordsGlobal);
       renderArchiveMasterTable(parsedRecordsGlobal);
-      renderArchiveCharts(filtered, parsedRecordsGlobal);
+      renderArchiveCharts(filtered);
     }
 
     function renderIndividualVarietyTables(allRecords) {
@@ -1754,50 +1760,45 @@
           totBonus += r.bonusGrams || 0;
         });
 
+        const vMargin = totRev > 0 ? ((totProf / totRev) * 100) : 0;
+
         return `
           <div class="bg-brandCard/90 p-5 rounded-2xl space-y-3" style="border: 1px solid ${style.border}40; box-shadow: 0 0 15px ${style.border}10;">
             <div class="flex justify-between items-center flex-wrap gap-2 pb-2 border-b border-brandBorder/60">
               <div class="flex items-center gap-2">
-                <span class="px-3 py-1 rounded-lg text-xs font-bold font-mono shadow-sm" style="background: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border};">
-                  🌿 Сорт: ${varName}
+                <span class="px-2.5 py-1 rounded text-xs font-bold font-mono" style="background: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}60;">
+                  🌿 ${varName}
                 </span>
-                <span class="text-xs text-gray-400 font-mono">(${records.length} угод)</span>
+                <span class="text-xs text-gray-400 font-mono">Угод: ${records.length}</span>
               </div>
-
-              <div class="flex flex-wrap gap-3 text-xs font-mono">
-                <span class="text-gray-300">Вага: <strong class="text-neonGreen">${totExact.toFixed(2)}г</strong></span>
-                <span class="text-gray-300">Виручка: <strong class="text-white">${totRev.toFixed(2)}€</strong></span>
-                <span class="text-gray-300">Прибуток: <strong class="text-neonBlue">${totProf.toFixed(2)}€</strong></span>
-                ${totBonus > 0 ? `<span class="text-neonYellow">Бонуси: <strong>${totBonus}г</strong></span>` : ''}
+              <div class="flex gap-4 text-xs font-mono">
+                <div>Вага: <span class="font-bold text-neonGreen">${totExact.toFixed(2)}г</span></div>
+                <div>Виручка: <span class="font-bold text-white">${totRev.toFixed(2)}€</span></div>
+                <div>Прибуток: <span class="font-bold text-neonBlue">${totProf.toFixed(2)}€</span></div>
+                <div>Маржа: <span class="font-bold text-neonYellow">${vMargin.toFixed(1)}%</span></div>
               </div>
             </div>
 
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs text-gray-300">
-                <thead class="bg-brandDark/80 text-gray-400 uppercase text-[9px] font-mono">
+                <thead class="bg-brandDark/80 text-gray-400 uppercase text-[9px]">
                   <tr>
                     <th class="p-2">Клієнт</th>
-                    <th class="p-2">Базова вага</th>
-                    <th class="p-2 text-neonGreen">Точна вага (*1.1)</th>
-                    <th class="p-2 text-neonRed">Собівартість (€)</th>
+                    <th class="p-2">Точна вага</th>
                     <th class="p-2 text-white">Виручка (€)</th>
                     <th class="p-2 text-neonBlue">Прибуток (€)</th>
-                    <th class="p-2 text-neonYellow">🎁 Бонус</th>
-                    <th class="p-2">Час угоди</th>
+                    <th class="p-2 text-neonYellow">% Заробітку</th>
+                    <th class="p-2">Час</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-brandBorder/40">
                   ${records.map(r => `
-                    <tr class="hover:bg-brandDark/40 transition">
-                      <td class="p-2 font-bold text-gray-200">${r.clientName}</td>
-                      <td class="p-2 font-mono text-gray-400">${r.baseGramm.toFixed(2)} г</td>
-                      <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)} г</td>
-                      <td class="p-2 font-mono text-neonRed">${(r.dealCost || 0).toFixed(2)} €</td>
-                      <td class="p-2 font-mono font-bold text-white">${(r.dealRevenue || 0).toFixed(2)} €</td>
-                      <td class="p-2 font-mono font-bold text-neonBlue">${(r.dealProfit || 0).toFixed(2)} €</td>
-                      <td class="p-2 font-mono ${r.bonusGrams > 0 ? 'text-neonYellow font-bold' : 'text-gray-500'}">
-                        ${r.bonusGrams > 0 ? `${r.bonusGrams}г` : '-'}
-                      </td>
+                    <tr>
+                      <td class="p-2 font-medium text-gray-200">${r.clientName}</td>
+                      <td class="p-2 font-mono text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
+                      <td class="p-2 font-mono text-white">${r.dealRevenue.toFixed(2)}€</td>
+                      <td class="p-2 font-mono text-neonBlue">${r.dealProfit.toFixed(2)}€</td>
+                      <td class="p-2 font-mono text-neonYellow">${r.marginPct ? r.marginPct.toFixed(1) : '0.0'}%</td>
                       <td class="p-2 font-mono text-gray-400 text-[10px]">${r.timeStr}</td>
                     </tr>
                   `).join('')}
@@ -1809,17 +1810,29 @@
       }).join('');
     }
 
-    function renderArchiveMasterTable(records) {
+    function renderArchiveMasterTable(allRecords) {
+      const records = allRecords || parsedRecordsGlobal;
+      const filterVal = document.getElementById('archiveVarietyFilter').value;
+      const searchVal = document.getElementById('archiveSearch').value.toLowerCase();
+
+      const filtered = records.filter(r => {
+        const matchVar = filterVal === 'ALL' || r.category === filterVal;
+        const matchSearch = r.clientName.toLowerCase().includes(searchVal) || 
+                            r.category.toLowerCase().includes(searchVal) ||
+                            r.timeStr.toLowerCase().includes(searchVal);
+        return matchVar && matchSearch;
+      });
+
       const tbody = document.getElementById('archiveMasterTableBody');
-      if (!records || records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="p-4 text-center text-gray-500">Архів порожній</td></tr>';
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>';
         return;
       }
 
-      tbody.innerHTML = records.map(r => {
+      tbody.innerHTML = filtered.map(r => {
         const style = getCategoryStyle(r.category);
         return `
-          <tr class="hover:bg-brandDark/40 transition arch-master-row" data-variety="${r.category}">
+          <tr class="hover:bg-brandDark/40 transition">
             <td class="p-3">
               <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono" style="background: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}40;">
                 ${r.category}
@@ -1832,326 +1845,50 @@
             <td class="p-3 font-mono text-neonRed">${r.dealCost ? r.dealCost.toFixed(2) : '0.00'} €</td>
             <td class="p-3 font-mono font-bold text-white">${r.dealRevenue ? r.dealRevenue.toFixed(2) : '0.00'} €</td>
             <td class="p-3 font-mono font-bold text-neonBlue">${r.dealProfit ? r.dealProfit.toFixed(2) : '0.00'} €</td>
+            <td class="p-3 font-mono font-bold text-neonYellow">${r.marginPct ? r.marginPct.toFixed(1) : '0.0'}%</td>
             <td class="p-3 font-mono font-bold ${r.bonusGrams > 0 ? 'text-neonYellow' : 'text-gray-500'}">
-              ${r.bonusGrams > 0 ? `${r.bonusGrams}г` : '-'}
+              ${r.bonusGrams > 0 ? `${r.bonusGrams}г (${r.bonusCostEur.toFixed(2)}€)` : '-'}
             </td>
-            <td class="p-3 font-mono text-[11px] ${r.cardAmount > 0 ? 'text-neonBlue font-bold' : r.advance > 0 ? 'text-neonBlue' : r.debtNew > 0 ? 'text-neonYellow' : r.debtRepaid > 0 ? 'text-emerald-400' : 'text-gray-500'}">
+            <td class="p-3 font-mono text-[11px] ${r.cardAmount > 0 ? 'text-neonBlue font-bold' : r.debtNew > 0 ? 'text-neonYellow' : r.debtRepaid > 0 ? 'text-emerald-400' : 'text-gray-500'}">
               ${r.rawDebtText || '-'}
             </td>
             <td class="p-3 font-mono text-gray-400 text-[11px]">${r.timeStr}</td>
           </tr>
         `;
       }).join('');
-
-      filterArchiveMasterTable();
     }
 
     function filterArchiveMasterTable() {
-      const searchVal = document.getElementById('archiveSearch').value.toLowerCase();
-      const selectedVariety = document.getElementById('archiveVarietyFilter').value;
-      const rows = document.querySelectorAll('.arch-master-row');
-
-      rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        const rowVariety = row.getAttribute('data-variety');
-
-        const matchesSearch = text.includes(searchVal);
-        const matchesVariety = (selectedVariety === 'ALL' || rowVariety === selectedVariety);
-
-        row.style.display = (matchesSearch && matchesVariety) ? '' : 'none';
-      });
+      renderArchiveMasterTable(parsedRecordsGlobal);
     }
 
-    function renderArchiveCharts(filteredRecords, allRecords) {
+    function renderArchiveCharts(filteredRecords) {
       if (archTimeChart) archTimeChart.destroy();
       if (archComparisonChart) archComparisonChart.destroy();
       if (archProfitChart) archProfitChart.destroy();
       if (archBuyersChart) archBuyersChart.destroy();
 
-      const dateMap = {};
+      // Chart 1: Time series
+      const datesMap = {};
       filteredRecords.forEach(r => {
-        const dateKey = r.parsedDateObj ? r.parsedDateObj.toLocaleDateString() : 'Інше';
-        if (!dateMap[dateKey]) dateMap[dateKey] = { rev: 0, prof: 0 };
-        dateMap[dateKey].rev += r.dealRevenue || 0;
-        dateMap[dateKey].prof += r.dealProfit || 0;
+        const dStr = r.parsedDateObj ? r.parsedDateObj.toLocaleDateString() : 'Інші';
+        if (!datesMap[dStr]) datesMap[dStr] = { rev: 0, prof: 0 };
+        datesMap[dStr].rev += r.dealRevenue || 0;
+        datesMap[dStr].prof += r.dealProfit || 0;
       });
 
-      const timeLabels = Object.keys(dateMap);
-      const revData = timeLabels.map(k => dateMap[k].rev);
-      const profData = timeLabels.map(k => dateMap[k].prof);
+      const dateLabels = Object.keys(datesMap);
+      const revData = dateLabels.map(d => datesMap[d].rev);
+      const profData = dateLabels.map(d => datesMap[d].prof);
 
-      const ctxTime = document.getElementById('archiveTimeChart').getContext('2d');
-      archTimeChart = new Chart(ctxTime, {
+      const ctx1 = document.getElementById('archiveTimeChart').getContext('2d');
+      archTimeChart = new Chart(ctx1, {
         type: 'line',
         data: {
-          labels: timeLabels,
+          labels: dateLabels,
           datasets: [
             { label: 'Виручка (€)', data: revData, borderColor: '#00FF88', backgroundColor: 'rgba(0, 255, 136, 0.1)', fill: true, tension: 0.3 },
             { label: 'Прибуток (€)', data: profData, borderColor: '#00E5FF', backgroundColor: 'rgba(0, 229, 255, 0.1)', fill: true, tension: 0.3 }
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: '#94A3B8', font: { size: 10 } } } },
-          scales: {
-            x: { ticks: { color: '#94A3B8', font: { size: 9 } }, grid: { color: '#1A2133' } },
-            y: { ticks: { color: '#94A3B8', font: { size: 9 } }, grid: { color: '#1A2133' } }
-          }
-        }
-      });
-
-      const calcSummary = (recs) => {
-        let rev = 0, prof = 0;
-        recs.forEach(r => { rev += r.dealRevenue || 0; prof += r.dealProfit || 0; });
-        return { rev, prof };
-      };
-
-      const daySummary = calcSummary(filterRecordsByPeriod(allRecords, 'day'));
-      const weekSummary = calcSummary(filterRecordsByPeriod(allRecords, 'week'));
-      const monthSummary = calcSummary(filterRecordsByPeriod(allRecords, 'month'));
-      const yearSummary = calcSummary(filterRecordsByPeriod(allRecords, 'year'));
-
-      const ctxComp = document.getElementById('archivePeriodComparisonChart').getContext('2d');
-      archComparisonChart = new Chart(ctxComp, {
-        type: 'bar',
-        data: {
-          labels: ['За День', 'За Тиждень', 'За Місяць', 'За Рік'],
-          datasets: [
-            { label: 'Виручка (€)', data: [daySummary.rev, weekSummary.rev, monthSummary.rev, yearSummary.rev], backgroundColor: 'rgba(0, 255, 136, 0.7)', borderRadius: 4 },
-            { label: 'Прибуток (€)', data: [daySummary.prof, weekSummary.prof, monthSummary.prof, yearSummary.prof], backgroundColor: 'rgba(0, 229, 255, 0.7)', borderRadius: 4 }
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: '#94A3B8', font: { size: 10 } } } },
-          scales: {
-            x: { ticks: { color: '#94A3B8', font: { size: 10 } }, grid: { display: false } },
-            y: { ticks: { color: '#94A3B8', font: { size: 10 } }, grid: { color: '#1A2133' } }
-          }
-        }
-      });
-
-      const varProfMap = {};
-      filteredRecords.forEach(r => {
-        const cat = r.category || 'UNCATEGORIZED';
-        varProfMap[cat] = (varProfMap[cat] || 0) + (r.dealProfit || 0);
-      });
-
-      const varLabels = Object.keys(varProfMap);
-      const varValues = varLabels.map(k => varProfMap[k]);
-      const varColors = varLabels.map(k => getCategoryStyle(k).border);
-
-      const ctxProf = document.getElementById('archiveVarietyProfitChart').getContext('2d');
-      archProfitChart = new Chart(ctxProf, {
-        type: 'doughnut',
-        data: {
-          labels: varLabels,
-          datasets: [{ data: varValues, backgroundColor: varColors.map(c => c + 'CC'), borderColor: '#0F121C', borderWidth: 2 }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'right', labels: { color: '#94A3B8', font: { size: 10 } } } }
-        }
-      });
-
-      const buyerMap = {};
-      filteredRecords.forEach(r => {
-        buyerMap[r.clientName] = (buyerMap[r.clientName] || 0) + (r.exactGramm || 0);
-      });
-
-      const topBuyers = Object.keys(buyerMap)
-        .map(k => ({ name: k, weight: buyerMap[k] }))
-        .sort((a, b) => b.weight - a.weight)
-        .slice(0, 7);
-
-      const ctxBuyers = document.getElementById('archiveTopBuyersChart').getContext('2d');
-      archBuyersChart = new Chart(ctxBuyers, {
-        type: 'bar',
-        data: {
-          labels: topBuyers.map(b => b.name),
-          datasets: [{ label: 'Точна вага (г)', data: topBuyers.map(b => b.weight), backgroundColor: 'rgba(157, 0, 255, 0.7)', borderColor: '#9D00FF', borderWidth: 1, borderRadius: 4 }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: '#94A3B8', font: { size: 9 } }, grid: { color: '#1A2133' } },
-            y: { ticks: { color: '#94A3B8', font: { size: 10 } }, grid: { display: false } }
-          }
-        }
-      });
-    }
-
-    // =========================================================
-    // СТОРІНКА 3: ЛОГІКА ПРОГНОЗУВАННЯ (НОВА ФУНКЦІОНАЛЬНІСТЬ)
-    // =========================================================
-
-    function setForecastMode(multiplier, modeName) {
-      currentForecastMultiplier = multiplier;
-
-      const modes = ['pessimistic', 'base', 'optimistic'];
-      modes.forEach(m => {
-        const btn = document.getElementById(`forecastBtn_${m}`);
-        if (btn) {
-          if (m === modeName) {
-            btn.className = "px-2.5 py-1 rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 font-bold shadow-sm";
-          } else {
-            btn.className = "px-2.5 py-1 rounded-lg text-gray-400 hover:text-white transition";
-          }
-        }
-      });
-
-      renderForecastView();
-    }
-
-    function renderForecastView() {
-      if (!parsedRecordsGlobal || parsedRecordsGlobal.length === 0) {
-        document.getElementById('forecastArchiveMetaInfo').innerText = "Архів порожній. Для розрахунку прогнозу додайте угоди в журнал.";
-        return;
-      }
-
-      // 1. Парсимо часові межі з архіву угод
-      const dateList = parsedRecordsGlobal
-        .map(r => r.parsedDateObj)
-        .filter(d => d && !isNaN(d.getTime()))
-        .sort((a, b) => a - b);
-
-      let totalDays = 1;
-      if (dateList.length > 1) {
-        const minDate = dateList[0];
-        const maxDate = dateList[dateList.length - 1];
-        const diffTime = Math.abs(maxDate - minDate);
-        totalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-      }
-
-      document.getElementById('forecastArchiveMetaInfo').innerText = 
-        `Парсинг завершено: згенеровано з ${parsedRecordsGlobal.length} угод за ${totalDays} днів активності. Множник: x${currentForecastMultiplier.toFixed(2)}`;
-
-      // 2. Підсумовуємо загальні обсяги з архіву
-      let totalRev = 0, totalProf = 0, totalWeight = 0, totalDeals = parsedRecordsGlobal.length;
-      const varietyForecastMap = {};
-
-      parsedRecordsGlobal.forEach(r => {
-        const rev = r.dealRevenue || 0;
-        const prof = r.dealProfit || 0;
-        const weight = r.exactGramm || 0;
-        const cat = r.category || 'UNCATEGORIZED';
-
-        totalRev += rev;
-        totalProf += prof;
-        totalWeight += weight;
-
-        if (!varietyForecastMap[cat]) {
-          varietyForecastMap[cat] = { rev: 0, prof: 0, weight: 0, deals: 0 };
-        }
-        varietyForecastMap[cat].rev += rev;
-        varietyForecastMap[cat].prof += prof;
-        varietyForecastMap[cat].weight += weight;
-        varietyForecastMap[cat].deals += 1;
-      });
-
-      // 3. Розраховуємо середньодобовий темп з урахуванням сценарію
-      const dailyRev = (totalRev / totalDays) * currentForecastMultiplier;
-      const dailyProf = (totalProf / totalDays) * currentForecastMultiplier;
-      const dailyWeight = (totalWeight / totalDays) * currentForecastMultiplier;
-      const dailyDeals = (totalDeals / totalDays) * currentForecastMultiplier;
-
-      // 4. Оновлюємо картки ДЕНЬ / ТИЖДЕНЬ / МІСЯЦЬ
-      // ДЕНЬ
-      document.getElementById('fcDayRev').innerText = `${dailyRev.toFixed(2)} €`;
-      document.getElementById('fcDayProf').innerText = `${dailyProf.toFixed(2)} €`;
-      document.getElementById('fcDayWeight').innerText = `${dailyWeight.toFixed(2)} г`;
-      document.getElementById('fcDayDeals').innerText = dailyDeals.toFixed(1);
-      document.getElementById('fcDayStockNeeded').innerText = `${dailyWeight.toFixed(2)} г`;
-
-      // ТИЖДЕНЬ (7 днів)
-      document.getElementById('fcWeekRev').innerText = `${(dailyRev * 7).toFixed(2)} €`;
-      document.getElementById('fcWeekProf').innerText = `${(dailyProf * 7).toFixed(2)} €`;
-      document.getElementById('fcWeekWeight').innerText = `${(dailyWeight * 7).toFixed(2)} г`;
-      document.getElementById('fcWeekDeals').innerText = Math.round(dailyDeals * 7);
-      document.getElementById('fcWeekStockNeeded').innerText = `${(dailyWeight * 7).toFixed(2)} г`;
-
-      // МІСЯЦЬ (30 днів)
-      document.getElementById('fcMonthRev').innerText = `${(dailyRev * 30).toFixed(2)} €`;
-      document.getElementById('fcMonthProf').innerText = `${(dailyProf * 30).toFixed(2)} €`;
-      document.getElementById('fcMonthWeight').innerText = `${(dailyWeight * 30).toFixed(2)} г`;
-      document.getElementById('fcMonthDeals').innerText = Math.round(dailyDeals * 30);
-      document.getElementById('fcMonthStockNeeded').innerText = `${(dailyWeight * 30).toFixed(2)} г`;
-
-      // 5. Заповнення прогнозної таблиці по сортах
-      renderForecastVarietyTable(varietyForecastMap, totalDays);
-
-      // 6. Побудова проєкційних графіків
-      renderForecastCharts(dailyRev, dailyProf, varietyForecastMap, totalDays);
-    }
-
-    function renderForecastVarietyTable(varietyForecastMap, totalDays) {
-      const tbody = document.getElementById('forecastVarietyTableBody');
-      const varieties = Object.keys(varietyForecastMap);
-
-      if (varieties.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Записи відсутні</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = varieties.map(varName => {
-        const data = varietyForecastMap[varName];
-        const style = getCategoryStyle(varName);
-
-        const varDailyWeight = (data.weight / totalDays) * currentForecastMultiplier;
-        const varWeekWeight = varDailyWeight * 7;
-        const varMonthWeight = varDailyWeight * 30;
-
-        const varMonthRev = (data.rev / totalDays) * 30 * currentForecastMultiplier;
-        const varMonthProf = (data.prof / totalDays) * 30 * currentForecastMultiplier;
-
-        return `
-          <tr class="hover:bg-brandDark/40 transition">
-            <td class="p-3 font-bold">
-              <span class="px-2.5 py-1 rounded text-[10px] font-bold font-mono" style="background: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}40;">
-                ${varName}
-              </span>
-            </td>
-            <td class="p-3 font-mono text-gray-300 font-bold">${varDailyWeight.toFixed(2)} г/день</td>
-            <td class="p-3 font-mono text-neonGreen font-bold">${varDailyWeight.toFixed(1)} г</td>
-            <td class="p-3 font-mono text-neonBlue font-bold">${varWeekWeight.toFixed(1)} г</td>
-            <td class="p-3 font-mono text-neonPurple font-bold">${varMonthWeight.toFixed(1)} г</td>
-            <td class="p-3 font-mono text-white font-bold">${varMonthRev.toFixed(2)} €</td>
-            <td class="p-3 font-mono text-neonBlue font-black">${varMonthProf.toFixed(2)} €</td>
-            <td class="p-3 font-mono text-neonYellow font-bold">${varMonthWeight.toFixed(0)} г</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function renderForecastCharts(dailyRev, dailyProf, varietyForecastMap, totalDays) {
-      if (fcComparisonChart) fcComparisonChart.destroy();
-      if (fcVarietyDemandChart) fcVarietyDemandChart.destroy();
-
-      // Графік 1: Фінансове порівняння (День / Тиждень / Місяць)
-      const ctxComp = document.getElementById('forecastComparisonChart').getContext('2d');
-      fcComparisonChart = new Chart(ctxComp, {
-        type: 'bar',
-        data: {
-          labels: ['1 День', '1 Тиждень (7д)', '1 Місяць (30д)'],
-          datasets: [
-            {
-              label: 'Прогноз Виручки (€)',
-              data: [dailyRev, dailyRev * 7, dailyRev * 30],
-              backgroundColor: 'rgba(0, 255, 136, 0.75)',
-              borderColor: '#00FF88',
-              borderWidth: 1.5,
-              borderRadius: 6
-            },
-            {
-              label: 'Прогноз Прибутку (€)',
-              data: [dailyProf, dailyProf * 7, dailyProf * 30],
-              backgroundColor: 'rgba(0, 229, 255, 0.75)',
-              borderColor: '#00E5FF',
-              borderWidth: 1.5,
-              borderRadius: 6
-            }
           ]
         },
         options: {
@@ -2159,27 +1896,91 @@
           maintainAspectRatio: false,
           plugins: { legend: { labels: { color: '#94A3B8', font: { size: 10 } } } },
           scales: {
-            x: { ticks: { color: '#94A3B8', font: { size: 10 } }, grid: { display: false } },
-            y: { ticks: { color: '#94A3B8', font: { size: 10 } }, grid: { color: '#1A2133' } }
+            x: { ticks: { color: '#94A3B8', font: { size: 9 } }, grid: { display: false } },
+            y: { ticks: { color: '#94A3B8', font: { size: 9 } }, grid: { color: '#1A2133' } }
           }
         }
       });
 
-      // Графік 2: Місячна потреба в грамах за сортами
-      const varLabels = Object.keys(varietyForecastMap);
-      const varMonthWeights = varLabels.map(v => ((varietyForecastMap[v].weight / totalDays) * 30 * currentForecastMultiplier));
-      const varColors = varLabels.map(v => getCategoryStyle(v).border);
+      // Chart 2: Comparison (Day, Week, Month, Year)
+      const now = new Date();
+      const periodsCalc = { 'День': 0, 'Тиждень': 0, 'Місяць': 0, 'Рік': 0 };
 
-      const ctxDemand = document.getElementById('forecastVarietyDemandChart').getContext('2d');
-      fcVarietyDemandChart = new Chart(ctxDemand, {
+      parsedRecordsGlobal.forEach(r => {
+        if (!r.parsedDateObj) return;
+        const d = r.parsedDateObj;
+        if (d.toDateString() === now.toDateString()) periodsCalc['День'] += r.dealRevenue;
+        if (d >= getMonday(now)) periodsCalc['Тиждень'] += r.dealRevenue;
+        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) periodsCalc['Місяць'] += r.dealRevenue;
+        if (d.getFullYear() === now.getFullYear()) periodsCalc['Рік'] += r.dealRevenue;
+      });
+
+      const ctx2 = document.getElementById('archivePeriodComparisonChart').getContext('2d');
+      archComparisonChart = new Chart(ctx2, {
         type: 'bar',
         data: {
-          labels: varLabels,
+          labels: Object.keys(periodsCalc),
           datasets: [{
-            label: 'Необхідний запас на місяць (г)',
-            data: varMonthWeights,
-            backgroundColor: varColors.map(c => c + 'B3'),
-            borderColor: varColors,
+            label: 'Виручка (€)',
+            data: Object.values(periodsCalc),
+            backgroundColor: ['rgba(0, 255, 136, 0.7)', 'rgba(0, 229, 255, 0.7)', 'rgba(157, 0, 255, 0.7)', 'rgba(255, 215, 0, 0.7)']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94A3B8' }, grid: { display: false } },
+            y: { ticks: { color: '#94A3B8' }, grid: { color: '#1A2133' } }
+          }
+        }
+      });
+
+      // Chart 3: Variety Profit Share
+      const varProfitMap = {};
+      filteredRecords.forEach(r => {
+        varProfitMap[r.category] = (varProfitMap[r.category] || 0) + (r.dealProfit || 0);
+      });
+
+      const ctx3 = document.getElementById('archiveVarietyProfitChart').getContext('2d');
+      archProfitChart = new Chart(ctx3, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(varProfitMap),
+          datasets: [{
+            data: Object.values(varProfitMap),
+            backgroundColor: Object.keys(varProfitMap).map(v => getCategoryStyle(v).border + 'CC')
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right', labels: { color: '#94A3B8', font: { size: 10 } } } }
+        }
+      });
+
+      // Chart 4: Top Buyers
+      const buyerWeightMap = {};
+      filteredRecords.forEach(r => {
+        buyerWeightMap[r.clientName] = (buyerWeightMap[r.clientName] || 0) + (r.exactGramm || 0);
+      });
+
+      const sortedBuyers = Object.keys(buyerWeightMap)
+        .map(b => ({ name: b, weight: buyerWeightMap[b] }))
+        .sort((a,b) => b.weight - a.weight)
+        .slice(0, 5);
+
+      const ctx4 = document.getElementById('archiveTopBuyersChart').getContext('2d');
+      archBuyersChart = new Chart(ctx4, {
+        type: 'bar',
+        data: {
+          labels: sortedBuyers.map(b => b.name),
+          datasets: [{
+            label: 'Точна вага (г)',
+            data: sortedBuyers.map(b => b.weight),
+            backgroundColor: '#9D00FF80',
+            borderColor: '#9D00FF',
             borderWidth: 1.5,
             borderRadius: 6
           }]
@@ -2189,18 +1990,199 @@
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#94A3B8', font: { size: 10 } }, grid: { display: false } },
-            y: { ticks: { color: '#94A3B8', font: { size: 10 } }, grid: { color: '#1A2133' } }
+            x: { ticks: { color: '#94A3B8' }, grid: { display: false } },
+            y: { ticks: { color: '#94A3B8' }, grid: { color: '#1A2133' } }
           }
         }
       });
     }
 
-    // Ініціалізація системи
-    loadGlobalVarieties();
-    initTelegramAuth();
-    loadUserData();
-    processData();
+    // =========================================================
+    // СТОРІНКА 3: ФУНКЦІОНАЛ ПРОГНОЗУВАННЯ
+    // =========================================================
+
+    function setForecastMode(multiplier, modeKey) {
+      currentForecastMultiplier = multiplier;
+
+      ['pessimistic', 'base', 'optimistic'].forEach(m => {
+        const btn = document.getElementById(`forecastBtn_${m}`);
+        if (btn) {
+          if (m === modeKey) {
+            btn.className = "px-3 py-1.5 rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/50 font-bold shadow-sm";
+          } else {
+            btn.className = "px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition font-medium";
+          }
+        }
+      });
+
+      renderForecastView();
+    }
+
+    function renderForecastView() {
+      const records = parsedRecordsGlobal;
+      if (records.length === 0) {
+        document.getElementById('forecastArchiveMetaInfo').innerText = "Немає збережених угод в архіві для побудови прогнозу.";
+        return;
+      }
+
+      // Розрахунок інтервалу днів в архіві
+      const dates = records.map(r => r.parsedDateObj).filter(Boolean);
+      const minDate = new Date(Math.min(...dates));
+      const maxDate = new Date(Math.max(...dates));
+      const diffTime = Math.abs(maxDate - minDate);
+      const totalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+      let totRev = 0, totProf = 0, totWeight = 0, totDeals = records.length;
+      records.forEach(r => {
+        totRev += r.dealRevenue || 0;
+        totProf += r.dealProfit || 0;
+        totWeight += r.exactGramm || 0;
+      });
+
+      const dailyAvgRev = (totRev / totalDays) * currentForecastMultiplier;
+      const dailyAvgProf = (totProf / totalDays) * currentForecastMultiplier;
+      const dailyAvgWeight = (totWeight / totalDays) * currentForecastMultiplier;
+      const dailyAvgDeals = (totDeals / totalDays) * currentForecastMultiplier;
+
+      const dailyMarginPct = dailyAvgRev > 0 ? ((dailyAvgProf / dailyAvgRev) * 100) : 0;
+
+      document.getElementById('forecastArchiveMetaInfo').innerText = 
+        `Аналіз аналітики за ${totalDays} дн. Архіву (${totDeals} угод). Середньодобовий виторг: ${dailyAvgRev.toFixed(2)}€/день.`;
+
+      // 1 День
+      document.getElementById('fcDayRev').innerText = `${dailyAvgRev.toFixed(2)} €`;
+      document.getElementById('fcDayProf').innerText = `${dailyAvgProf.toFixed(2)} €`;
+      document.getElementById('fcDayMargin').innerText = `(${dailyMarginPct.toFixed(1)}%)`;
+      document.getElementById('fcDayWeight').innerText = `${dailyAvgWeight.toFixed(2)} г`;
+      document.getElementById('fcDayDeals').innerText = dailyAvgDeals.toFixed(1);
+      document.getElementById('fcDayStockNeeded').innerText = `${dailyAvgWeight.toFixed(2)} г`;
+
+      // 1 Тиждень (7 днів)
+      document.getElementById('fcWeekRev').innerText = `${(dailyAvgRev * 7).toFixed(2)} €`;
+      document.getElementById('fcWeekProf').innerText = `${(dailyAvgProf * 7).toFixed(2)} €`;
+      document.getElementById('fcWeekMargin').innerText = `(${dailyMarginPct.toFixed(1)}%)`;
+      document.getElementById('fcWeekWeight').innerText = `${(dailyAvgWeight * 7).toFixed(2)} г`;
+      document.getElementById('fcWeekDeals').innerText = Math.round(dailyAvgDeals * 7);
+      document.getElementById('fcWeekStockNeeded').innerText = `${(dailyAvgWeight * 7).toFixed(2)} г`;
+
+      // 1 Місяць (30 днів)
+      document.getElementById('fcMonthRev').innerText = `${(dailyAvgRev * 30).toFixed(2)} €`;
+      document.getElementById('fcMonthProf').innerText = `${(dailyAvgProf * 30).toFixed(2)} €`;
+      document.getElementById('fcMonthMargin').innerText = `(${dailyMarginPct.toFixed(1)}%)`;
+      document.getElementById('fcMonthWeight').innerText = `${(dailyAvgWeight * 30).toFixed(2)} г`;
+      document.getElementById('fcMonthDeals').innerText = Math.round(dailyAvgDeals * 30);
+      document.getElementById('fcMonthStockNeeded').innerText = `${(dailyAvgWeight * 30).toFixed(2)} г`;
+
+      renderForecastVarietyTable(records, totalDays);
+      renderForecastCharts(dailyAvgRev, dailyAvgProf, records, totalDays);
+    }
+
+    function renderForecastVarietyTable(records, totalDays) {
+      const varietyMap = {};
+      records.forEach(r => {
+        const v = r.category;
+        if (!varietyMap[v]) varietyMap[v] = { weight: 0, rev: 0, prof: 0 };
+        varietyMap[v].weight += r.exactGramm || 0;
+        varietyMap[v].rev += r.dealRevenue || 0;
+        varietyMap[v].prof += r.dealProfit || 0;
+      });
+
+      const tbody = document.getElementById('forecastVarietyTableBody');
+      const varieties = Object.keys(varietyMap);
+
+      if (varieties.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-gray-500">Дані відсутні</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = varieties.map(v => {
+        const style = getCategoryStyle(v);
+        const data = varietyMap[v];
+
+        const dWeight = (data.weight / totalDays) * currentForecastMultiplier;
+        const dRev = (data.rev / totalDays) * currentForecastMultiplier;
+        const dProf = (data.prof / totalDays) * currentForecastMultiplier;
+        const vMarginPct = dRev > 0 ? ((dProf / dRev) * 100) : 0;
+
+        return `
+          <tr class="hover:bg-brandDark/40 transition font-mono">
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono" style="background: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}40;">
+                ${v}
+              </span>
+            </td>
+            <td class="p-3 font-bold text-gray-300">${dWeight.toFixed(2)} г</td>
+            <td class="p-3 text-neonGreen font-bold">${dWeight.toFixed(2)} г</td>
+            <td class="p-3 text-neonBlue font-bold">${(dWeight * 7).toFixed(2)} г</td>
+            <td class="p-3 text-neonPurple font-bold">${(dWeight * 30).toFixed(2)} г</td>
+            <td class="p-3 text-white font-bold">${(dRev * 30).toFixed(2)} €</td>
+            <td class="p-3 text-neonBlue font-bold">${(dProf * 30).toFixed(2)} €</td>
+            <td class="p-3 text-neonYellow font-bold">${vMarginPct.toFixed(1)}%</td>
+            <td class="p-3 text-neonYellow font-bold">${(dWeight * 30).toFixed(1)} г</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderForecastCharts(dRev, dProf, records, totalDays) {
+      if (fcComparisonChart) fcComparisonChart.destroy();
+      if (fcVarietyDemandChart) fcVarietyDemandChart.destroy();
+
+      const ctx1 = document.getElementById('forecastComparisonChart').getContext('2d');
+      fcComparisonChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: ['1 День', '1 Тиждень (7д)', '1 Місяць (30д)'],
+          datasets: [
+            { label: 'Виручка (€)', data: [dRev, dRev * 7, dRev * 30], backgroundColor: 'rgba(0, 255, 136, 0.75)' },
+            { label: 'Прибуток (€)', data: [dProf, dProf * 7, dProf * 30], backgroundColor: 'rgba(0, 229, 255, 0.75)' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94A3B8' } } },
+          scales: {
+            x: { ticks: { color: '#94A3B8' }, grid: { display: false } },
+            y: { ticks: { color: '#94A3B8' }, grid: { color: '#1A2133' } }
+          }
+        }
+      });
+
+      const varietyDemand = {};
+      records.forEach(r => {
+        varietyDemand[r.category] = (varietyDemand[r.category] || 0) + (r.exactGramm || 0);
+      });
+
+      const labels = Object.keys(varietyDemand);
+      const monthDemand = labels.map(v => ((varietyDemand[v] / totalDays) * 30 * currentForecastMultiplier));
+
+      const ctx2 = document.getElementById('forecastVarietyDemandChart').getContext('2d');
+      fcVarietyDemandChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: monthDemand,
+            backgroundColor: labels.map(v => getCategoryStyle(v).border + 'CC')
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right', labels: { color: '#94A3B8', font: { size: 10 } } } }
+        }
+      });
+    }
+
+    // INIT APP
+    window.addEventListener('DOMContentLoaded', () => {
+      loadGlobalVarieties();
+      initTelegramAuth();
+      loadUserData();
+      processData();
+    });
   </script>
+
 </body>
 </html>
