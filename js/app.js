@@ -35,6 +35,7 @@ let chartBubbleInstance = null;
 
 const categoryColorMap = {};
 function getCategoryColor(categoryName) {
+  if (!categoryName) categoryName = 'UNCATEGORIZED';
   if (!categoryColorMap[categoryName]) {
     let hash = 0;
     for (let i = 0; i < categoryName.length; i++) {
@@ -50,142 +51,158 @@ function getCategoryColor(categoryName) {
   return categoryColorMap[categoryName];
 }
 
-function startApp() {
-  initUserSession();
-
-  purchases = loadPurchases();
-  myExpenses = loadMyExpenses();
-  globalArchiveRecords = loadGlobalArchive();
-
-  initNavigation();
-  initPurchasesUI();
-  initQuickButtons();
-  initMyExpensesEvents();
-
-  const rawInputEl = document.getElementById('rawInput');
-  if (rawInputEl) {
-    rawInputEl.value = loadRawLogs();
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Ініціалізація навігації (пріоритет №1 — має працювати завжди)
+  try {
+    initNavigation();
+    initQuickButtons();
+    initMyExpensesEvents();
+  } catch (err) {
+    console.error('[HMS2.0] Помилка ініціалізації навігації UI:', err);
   }
 
-  processCurrentInput();
+  // 2. Безпечна авторизація користувача
+  try {
+    initUserSession();
+  } catch (err) {
+    console.error('[HMS2.0] Помилка Telegram Auth, перемикаємось на Dev-профіль:', err);
+    currentUser = { id: 'local_dev_user', firstName: 'Dev', lastName: 'Admin', username: '@local_dev' };
+    setCurrentUserId(currentUser.id);
+  }
 
+  // 3. Завантаження даних із LocalStorage
+  try {
+    purchases = loadPurchases() || {};
+    myExpenses = loadMyExpenses() || [];
+    globalArchiveRecords = loadGlobalArchive() || [];
+
+    const rawInputEl = document.getElementById('rawInput');
+    if (rawInputEl) {
+      rawInputEl.value = loadRawLogs() || '';
+    }
+  } catch (err) {
+    console.error('[HMS2.0] Помилка завантаження даних зі стореджу:', err);
+  }
+
+  // 4. Первинний обрахунок
+  try {
+    processCurrentInput();
+  } catch (err) {
+    console.error('[HMS2.0] Помилка обробки вхідних даних:', err);
+  }
+
+  // 5. Прив'язка глобальних подій (кнопки)
+  bindGlobalEvents();
+});
+
+function bindGlobalEvents() {
   const btnCalc = document.getElementById('btnCalculate');
-  if (btnCalc) btnCalc.onclick = () => processCurrentInput();
+  if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
 
   const btnAddPur = document.getElementById('btnAddPurchase');
-  if (btnAddPur) btnAddPur.onclick = () => handleAddPurchase();
+  if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
 
   const btnClearArch = document.getElementById('btnClearArchive');
   if (btnClearArch) {
-    btnClearArch.onclick = () => {
+    btnClearArch.addEventListener('click', () => {
       if (confirm('Дійсно очистити весь глобальний архів?')) {
         clearGlobalArchive();
         globalArchiveRecords = [];
         processCurrentInput();
       }
-    };
+    });
   }
 
   const btnExport = document.getElementById('btnExportTxt');
   if (btnExport) {
-    btnExport.onclick = () => exportArchiveToTxt(globalArchiveRecords, currentPeriod);
+    btnExport.addEventListener('click', () => exportArchiveToTxt(globalArchiveRecords, currentPeriod));
   }
 
   document.querySelectorAll('.btn-period').forEach(btn => {
-    btn.onclick = (e) => {
+    btn.addEventListener('click', (e) => {
       document.querySelectorAll('.btn-period').forEach(b => {
         b.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
       });
       e.target.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
       currentPeriod = e.target.getAttribute('data-period');
       renderAnalyticsPage();
-    };
+    });
   });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startApp);
-} else {
-  startApp();
 }
 
 function initUserSession() {
   currentUser = getTelegramUser();
+  if (!currentUser || !currentUser.id) {
+    currentUser = { id: 'local_dev_user', firstName: 'Dev', lastName: 'Admin', username: '@local_dev' };
+  }
+  
   setCurrentUserId(currentUser.id);
 
   const userNameEl = document.getElementById('userName');
   const userHandleEl = document.getElementById('userHandle');
   const userAvatarEl = document.getElementById('userAvatar');
 
-  if (userNameEl) userNameEl.innerText = `${currentUser.firstName} ${currentUser.lastName}`.trim();
+  if (userNameEl) userNameEl.innerText = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Користувач';
   if (userHandleEl) userHandleEl.innerText = currentUser.username || `id: ${currentUser.id}`;
 
   if (userAvatarEl) {
     if (currentUser.photoUrl) {
       userAvatarEl.innerHTML = `<img src="${currentUser.photoUrl}" class="w-full h-full rounded-full object-cover">`;
     } else {
-      userAvatarEl.innerText = (currentUser.firstName.charAt(0) || 'U').toUpperCase();
+      const initial = (currentUser.firstName && currentUser.firstName.charAt(0)) ? currentUser.firstName.charAt(0).toUpperCase() : 'U';
+      userAvatarEl.innerText = initial;
     }
   }
 }
 
 function initNavigation() {
-  const btnDashboard = document.getElementById('tabDashboard');
-  const btnAnalytics = document.getElementById('tabAnalytics');
-  const btnForecast = document.getElementById('tabForecast');
-
-  const pageDashboard = document.getElementById('pageDashboard');
-  const pageAnalytics = document.getElementById('pageAnalytics');
-  const pageForecast = document.getElementById('pageForecast');
+  const tabs = {
+    dashboard: { tab: document.getElementById('tabDashboard'), page: document.getElementById('pageDashboard') },
+    analytics: { tab: document.getElementById('tabAnalytics'), page: document.getElementById('pageAnalytics') },
+    forecast: { tab: document.getElementById('tabForecast'), page: document.getElementById('pageForecast') }
+  };
 
   const activeClass = 'px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
   const inactiveClass = 'px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
 
-  const showPage = (target) => {
-    pageDashboard.classList.add('hidden');
-    pageAnalytics.classList.add('hidden');
-    pageForecast.classList.add('hidden');
+  const switchTab = (targetKey) => {
+    Object.keys(tabs).forEach(key => {
+      if (!tabs[key].tab || !tabs[key].page) return;
+      if (key === targetKey) {
+        tabs[key].page.classList.remove('hidden');
+        tabs[key].tab.className = activeClass;
+      } else {
+        tabs[key].page.classList.add('hidden');
+        tabs[key].tab.className = inactiveClass;
+      }
+    });
 
-    btnDashboard.className = inactiveClass;
-    btnAnalytics.className = inactiveClass;
-    btnForecast.className = inactiveClass;
-
-    if (target === 'dashboard') {
-      pageDashboard.classList.remove('hidden');
-      btnDashboard.className = activeClass;
-    } else if (target === 'analytics') {
-      pageAnalytics.classList.remove('hidden');
-      btnAnalytics.className = activeClass;
-      renderAnalyticsPage();
-    } else if (target === 'forecast') {
-      pageForecast.classList.remove('hidden');
-      btnForecast.className = activeClass;
-      renderForecastPage();
-    }
+    if (targetKey === 'analytics') renderAnalyticsPage();
+    if (targetKey === 'forecast') renderForecastPage();
   };
 
-  if (btnDashboard) btnDashboard.onclick = () => showPage('dashboard');
-  if (btnAnalytics) btnAnalytics.onclick = () => showPage('analytics');
-  if (btnForecast) btnForecast.onclick = () => showPage('forecast');
+  if (tabs.dashboard.tab) tabs.dashboard.tab.addEventListener('click', () => switchTab('dashboard'));
+  if (tabs.analytics.tab) tabs.analytics.tab.addEventListener('click', () => switchTab('analytics'));
+  if (tabs.forecast.tab) tabs.forecast.tab.addEventListener('click', () => switchTab('forecast'));
 }
 
 function initQuickButtons() {
   document.querySelectorAll('.btn-quick-expense').forEach(btn => {
-    btn.onclick = (e) => {
+    btn.addEventListener('click', (e) => {
       const name = e.target.getAttribute('data-name') || e.target.innerText.replace(/[^a-zA-Z]/g, '').trim();
       const noteInput = document.getElementById('myExpenseNote');
       const amountInput = document.getElementById('myExpenseAmount');
       if (noteInput) noteInput.value = name;
       if (amountInput) amountInput.focus();
-    };
+    });
   });
 }
 
 function initMyExpensesEvents() {
   const btnInc = document.getElementById('btnAddIncome');
   const btnExp = document.getElementById('btnAddExpense');
-  if (btnInc) btnInc.onclick = () => addMyExpenseItem('income');
-  if (btnExp) btnExp.onclick = () => addMyExpenseItem('expense');
+  if (btnInc) btnInc.addEventListener('click', () => addMyExpenseItem('income'));
+  if (btnExp) btnExp.addEventListener('click', () => addMyExpenseItem('expense'));
 }
 
 function addMyExpenseItem(type) {
@@ -226,7 +243,7 @@ function renderMyExpensesList() {
           <span class="font-mono font-bold ${isInc ? 'text-emerald-400' : 'text-neonRed'}">
             ${isInc ? '+' : ''}${item.amount} €
           </span>
-          <button type="button" data-idx="${idx}" class="btn-del-expense text-gray-500 hover:text-red-400 font-bold">✕</button>
+          <button data-idx="${idx}" class="btn-del-expense text-gray-500 hover:text-red-400 font-bold">✕</button>
         </div>
       </div>
     `;
@@ -236,12 +253,12 @@ function renderMyExpensesList() {
   if (disp) disp.innerText = `${totalCustom.toFixed(1)} €`;
 
   document.querySelectorAll('.btn-del-expense').forEach(btn => {
-    btn.onclick = (e) => {
+    btn.addEventListener('click', (e) => {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
       saveMyExpenses(myExpenses);
       processCurrentInput();
-    };
+    });
   });
 }
 
@@ -250,12 +267,12 @@ function processCurrentInput() {
   const rawText = rawInput ? rawInput.value : '';
   saveRawLogs(rawText);
 
-  currentRecordsBatch = parseLogs(rawText);
+  currentRecordsBatch = parseLogs(rawText) || [];
 
   if (currentRecordsBatch.length > 0) {
     globalArchiveRecords = saveGlobalArchive(currentRecordsBatch);
   } else {
-    globalArchiveRecords = loadGlobalArchive();
+    globalArchiveRecords = loadGlobalArchive() || [];
   }
 
   currentRecordsBatch.forEach(r => {
@@ -281,34 +298,35 @@ function processCurrentInput() {
   const clientDebtsMap = {};
 
   currentRecordsBatch.forEach(r => {
-    totalRevenue += r.eurPaid;
+    totalRevenue += r.eurPaid || 0;
     if (r.isCard) {
-      totalCard += r.eurPaid;
+      totalCard += r.eurPaid || 0;
     } else {
-      totalCash += r.eurPaid;
+      totalCash += r.eurPaid || 0;
     }
 
-    totalExactWeight += r.exactGramm;
-    totalBonusWeight += r.bonusGramm;
+    totalExactWeight += r.exactGramm || 0;
+    totalBonusWeight += r.bonusGramm || 0;
 
     const costFor100g = purchases[r.category] || 0;
     const costPerExactGram = costFor100g / 110; 
     const costPerRawGram = costFor100g / 100;
 
-    const baseCost = (r.baseGramm * 1.1) * costPerExactGram;
-    const bonusCost = r.bonusGramm * costPerRawGram;
+    const baseCost = ((r.baseGramm || 0) * 1.1) * costPerExactGram;
+    const bonusCost = (r.bonusGramm || 0) * costPerRawGram;
 
     totalCostOfGoods += (baseCost + bonusCost);
     totalBonusCost += bonusCost;
 
-    totalNewDebts += r.debtNew;
-    totalRepaidDebts += r.debtRepaid;
+    totalNewDebts += r.debtNew || 0;
+    totalRepaidDebts += r.debtRepaid || 0;
 
-    if (!clientDebtsMap[r.clientName]) {
-      clientDebtsMap[r.clientName] = { newDebt: 0, repaidDebt: 0 };
+    const cName = r.clientName || 'Невідомий';
+    if (!clientDebtsMap[cName]) {
+      clientDebtsMap[cName] = { newDebt: 0, repaidDebt: 0 };
     }
-    clientDebtsMap[r.clientName].newDebt += r.debtNew;
-    clientDebtsMap[r.clientName].repaidDebt += r.debtRepaid;
+    clientDebtsMap[cName].newDebt += r.debtNew || 0;
+    clientDebtsMap[cName].repaidDebt += r.debtRepaid || 0;
   });
 
   let totalActiveDebt = 0;
@@ -374,10 +392,12 @@ function renderForecastPage() {
     if (dealsEl) dealsEl.innerText = `${data.deals}`;
   };
 
-  setForecastData('fcTomorrow', forecasts.tomorrow);
-  setForecastData('fcWeek', forecasts.week);
-  setForecastData('fcMonth', forecasts.month);
-  setForecastData('fcYear', forecasts.year);
+  if (forecasts) {
+    setForecastData('fcTomorrow', forecasts.tomorrow);
+    setForecastData('fcWeek', forecasts.week);
+    setForecastData('fcMonth', forecasts.month);
+    setForecastData('fcYear', forecasts.year);
+  }
 }
 
 function renderTopClients() {
@@ -385,7 +405,7 @@ function renderTopClients() {
   if (!container) return;
 
   const topList = getTopClients(currentRecordsBatch, 3);
-  if (topList.length === 0) {
+  if (!topList || topList.length === 0) {
     container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по поточній таблиці</p>';
     return;
   }
@@ -468,7 +488,7 @@ function renderCurrentTable(records) {
         <td class="p-2 font-bold" style="color: ${color.text}">${r.category}</td>
         <td class="p-2 text-gray-200">${r.clientName}</td>
         <td class="p-2 font-mono">${r.baseGramm} ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
-        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
         <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
         <td class="p-2 font-bold">${r.eurPaid} €</td>
         <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
@@ -482,11 +502,11 @@ function renderAnalyticsPage() {
   const archiveTotalCountEl = document.getElementById('archiveTotalCount');
   if (archiveTotalCountEl) archiveTotalCountEl.innerText = globalArchiveRecords.length;
 
-  const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
+  const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod) || [];
 
   const sortedArchive = [...filtered].sort((a, b) => {
     if (a.category !== b.category) {
-      return a.category.localeCompare(b.category);
+      return (a.category || '').localeCompare(b.category || '');
     }
     return safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj);
   });
@@ -496,7 +516,7 @@ function renderAnalyticsPage() {
 
   if (typeof Chart === 'undefined') return;
 
-  const grouped = groupRecordsByTimeSlot(filtered, currentPeriod);
+  const grouped = groupRecordsByTimeSlot(filtered, currentPeriod) || {};
   const labels = Object.keys(grouped);
   const revenues = labels.map(k => grouped[k].revenue);
   const weights = labels.map(k => grouped[k].weight);
@@ -657,7 +677,7 @@ function renderHeatmap() {
   container.innerHTML = html;
 
   if (selectEl && !selectEl.dataset.initialized) {
-    selectEl.onchange = () => renderHeatmap();
+    selectEl.addEventListener('change', () => renderHeatmap());
     selectEl.dataset.initialized = 'true';
   }
 }
@@ -682,7 +702,7 @@ function renderArchiveTable(records) {
         </td>
         <td class="p-2 text-gray-200">${r.clientName}</td>
         <td class="p-2 font-mono">${r.rawGramm}</td>
-        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
         <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
         <td class="p-2 font-bold">${r.eurPaid} €</td>
         <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
