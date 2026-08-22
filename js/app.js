@@ -70,36 +70,36 @@ function startApp() {
   processCurrentInput();
 
   const btnCalc = document.getElementById('btnCalculate');
-  if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
+  if (btnCalc) btnCalc.onclick = () => processCurrentInput();
 
   const btnAddPur = document.getElementById('btnAddPurchase');
-  if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
+  if (btnAddPur) btnAddPur.onclick = () => handleAddPurchase();
 
   const btnClearArch = document.getElementById('btnClearArchive');
   if (btnClearArch) {
-    btnClearArch.addEventListener('click', () => {
+    btnClearArch.onclick = () => {
       if (confirm('Дійсно очистити весь глобальний архів?')) {
         clearGlobalArchive();
         globalArchiveRecords = [];
         processCurrentInput();
       }
-    });
+    };
   }
 
   const btnExport = document.getElementById('btnExportTxt');
   if (btnExport) {
-    btnExport.addEventListener('click', () => exportArchiveToTxt(globalArchiveRecords, currentPeriod));
+    btnExport.onclick = () => exportArchiveToTxt(globalArchiveRecords, currentPeriod);
   }
 
   document.querySelectorAll('.btn-period').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.onclick = (e) => {
       document.querySelectorAll('.btn-period').forEach(b => {
         b.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
       });
       e.target.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
       currentPeriod = e.target.getAttribute('data-period');
       renderAnalyticsPage();
-    });
+    };
   });
 }
 
@@ -130,53 +130,62 @@ function initUserSession() {
 }
 
 function initNavigation() {
-  const tabs = {
-    dashboard: { tab: document.getElementById('tabDashboard'), page: document.getElementById('pageDashboard') },
-    analytics: { tab: document.getElementById('tabAnalytics'), page: document.getElementById('pageAnalytics') },
-    forecast: { tab: document.getElementById('tabForecast'), page: document.getElementById('pageForecast') }
-  };
+  const btnDashboard = document.getElementById('tabDashboard');
+  const btnAnalytics = document.getElementById('tabAnalytics');
+  const btnForecast = document.getElementById('tabForecast');
+
+  const pageDashboard = document.getElementById('pageDashboard');
+  const pageAnalytics = document.getElementById('pageAnalytics');
+  const pageForecast = document.getElementById('pageForecast');
 
   const activeClass = 'px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
   const inactiveClass = 'px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
 
-  const switchTab = (targetKey) => {
-    Object.keys(tabs).forEach(key => {
-      if (!tabs[key].tab || !tabs[key].page) return;
-      if (key === targetKey) {
-        tabs[key].page.classList.remove('hidden');
-        tabs[key].tab.className = activeClass;
-      } else {
-        tabs[key].page.classList.add('hidden');
-        tabs[key].tab.className = inactiveClass;
-      }
-    });
+  const showPage = (target) => {
+    pageDashboard.classList.add('hidden');
+    pageAnalytics.classList.add('hidden');
+    pageForecast.classList.add('hidden');
 
-    if (targetKey === 'analytics') renderAnalyticsPage();
-    if (targetKey === 'forecast') renderForecastPage();
+    btnDashboard.className = inactiveClass;
+    btnAnalytics.className = inactiveClass;
+    btnForecast.className = inactiveClass;
+
+    if (target === 'dashboard') {
+      pageDashboard.classList.remove('hidden');
+      btnDashboard.className = activeClass;
+    } else if (target === 'analytics') {
+      pageAnalytics.classList.remove('hidden');
+      btnAnalytics.className = activeClass;
+      renderAnalyticsPage();
+    } else if (target === 'forecast') {
+      pageForecast.classList.remove('hidden');
+      btnForecast.className = activeClass;
+      renderForecastPage();
+    }
   };
 
-  if (tabs.dashboard.tab) tabs.dashboard.tab.onclick = () => switchTab('dashboard');
-  if (tabs.analytics.tab) tabs.analytics.tab.onclick = () => switchTab('analytics');
-  if (tabs.forecast.tab) tabs.forecast.tab.onclick = () => switchTab('forecast');
+  if (btnDashboard) btnDashboard.onclick = () => showPage('dashboard');
+  if (btnAnalytics) btnAnalytics.onclick = () => showPage('analytics');
+  if (btnForecast) btnForecast.onclick = () => showPage('forecast');
 }
 
 function initQuickButtons() {
   document.querySelectorAll('.btn-quick-expense').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.onclick = (e) => {
       const name = e.target.getAttribute('data-name') || e.target.innerText.replace(/[^a-zA-Z]/g, '').trim();
       const noteInput = document.getElementById('myExpenseNote');
       const amountInput = document.getElementById('myExpenseAmount');
       if (noteInput) noteInput.value = name;
       if (amountInput) amountInput.focus();
-    });
+    };
   });
 }
 
 function initMyExpensesEvents() {
   const btnInc = document.getElementById('btnAddIncome');
   const btnExp = document.getElementById('btnAddExpense');
-  if (btnInc) btnInc.addEventListener('click', () => addMyExpenseItem('income'));
-  if (btnExp) btnExp.addEventListener('click', () => addMyExpenseItem('expense'));
+  if (btnInc) btnInc.onclick = () => addMyExpenseItem('income');
+  if (btnExp) btnExp.onclick = () => addMyExpenseItem('expense');
 }
 
 function addMyExpenseItem(type) {
@@ -217,7 +226,7 @@ function renderMyExpensesList() {
           <span class="font-mono font-bold ${isInc ? 'text-emerald-400' : 'text-neonRed'}">
             ${isInc ? '+' : ''}${item.amount} €
           </span>
-          <button data-idx="${idx}" class="btn-del-expense text-gray-500 hover:text-red-400 font-bold">✕</button>
+          <button type="button" data-idx="${idx}" class="btn-del-expense text-gray-500 hover:text-red-400 font-bold">✕</button>
         </div>
       </div>
     `;
@@ -227,12 +236,12 @@ function renderMyExpensesList() {
   if (disp) disp.innerText = `${totalCustom.toFixed(1)} €`;
 
   document.querySelectorAll('.btn-del-expense').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.onclick = (e) => {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
       saveMyExpenses(myExpenses);
       processCurrentInput();
-    });
+    };
   });
 }
 
@@ -648,7 +657,7 @@ function renderHeatmap() {
   container.innerHTML = html;
 
   if (selectEl && !selectEl.dataset.initialized) {
-    selectEl.addEventListener('change', () => renderHeatmap());
+    selectEl.onchange = () => renderHeatmap();
     selectEl.dataset.initialized = 'true';
   }
 }
