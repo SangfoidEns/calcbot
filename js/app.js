@@ -1,5 +1,3 @@
-// Головний точковий контроллер додатку
-
 import { parseLogs } from './parser.js';
 import { 
   setCurrentUserId, 
@@ -20,12 +18,8 @@ import {
   calculateWeeklyHeatmap, 
   safeParseDate 
 } from './analytics.js';
-import { 
-  predictTomorrowHourly, 
-  predictNextWeekDaily, 
-  predictNextMonthSummary 
-} from './forecasting.js';
 import { getTelegramUser } from './telegram.js';
+import { exportArchiveToTxt } from './export.js';
 
 let currentUser = null;
 let purchases = {};
@@ -34,12 +28,9 @@ let currentRecordsBatch = [];
 let globalArchiveRecords = [];
 let currentPeriod = 'week';
 
-// Chart instances
 let chartRevenueInstance = null;
 let chartWeightInstance = null;
 let chartBubbleInstance = null;
-let chartFcTomorrowInstance = null;
-let chartFcWeekInstance = null;
 
 const categoryColorMap = {};
 function getCategoryColor(categoryName) {
@@ -58,41 +49,36 @@ function getCategoryColor(categoryName) {
   return categoryColorMap[categoryName];
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Авторизація користувача з Telegram
+document.addEventListener('DOMContentLoaded', () => {
   initUserSession();
 
-  // 2. Асинхронне відновлення з Telegram Cloud Storage
-  purchases = await loadPurchases();
-  myExpenses = await loadMyExpenses();
-  globalArchiveRecords = await loadGlobalArchive();
+  purchases = loadPurchases();
+  myExpenses = loadMyExpenses();
+  globalArchiveRecords = loadGlobalArchive();
 
-  const rawInputEl = document.getElementById('rawInput');
-  if (rawInputEl) {
-    rawInputEl.value = await loadRawLogs();
-  }
-
-  // 3. Ініціалізація UI
   initNavigation();
   initPurchasesUI();
   initQuickButtons();
   initMyExpensesEvents();
 
-  // 4. Початковий розрахунок
-  await processCurrentInput();
+  const rawInputEl = document.getElementById('rawInput');
+  if (rawInputEl) {
+    rawInputEl.value = loadRawLogs();
+  }
 
-  // Event Listeners
+  processCurrentInput();
+
   const btnCalc = document.getElementById('btnCalculate');
-  if (btnCalc) btnCalc.addEventListener('click', async () => await processCurrentInput());
+  if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
 
   const btnAddPur = document.getElementById('btnAddPurchase');
   if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
 
   const btnClearArch = document.getElementById('btnClearArchive');
   if (btnClearArch) {
-    btnClearArch.addEventListener('click', async () => {
-      if (confirm('Дійсно очистити весь хмарний архів угод?')) {
-        await clearGlobalArchive();
+    btnClearArch.addEventListener('click', () => {
+      if (confirm('Дійсно очистити весь глобальний архів?')) {
+        clearGlobalArchive();
         globalArchiveRecords = [];
         renderAnalyticsPage();
       }
@@ -100,7 +86,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const btnExport = document.getElementById('btnExportTxt');
-  if (btnExport) btnExport.addEventListener('click', exportArchiveToTxt);
+  if (btnExport) {
+    btnExport.addEventListener('click', () => exportArchiveToTxt(globalArchiveRecords, currentPeriod));
+  }
 
   document.querySelectorAll('.btn-period').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -137,52 +125,31 @@ function initUserSession() {
 function initNavigation() {
   const tabDashboard = document.getElementById('tabDashboard');
   const tabAnalytics = document.getElementById('tabAnalytics');
-  const tabForecast = document.getElementById('tabForecast');
-
   const pageDashboard = document.getElementById('pageDashboard');
   const pageAnalytics = document.getElementById('pageAnalytics');
-  const pageForecast = document.getElementById('pageForecast');
 
-  const resetNavStyle = () => {
-    [tabDashboard, tabAnalytics, tabForecast].forEach(t => {
-      if (t) t.className = 'px-3 py-1.5 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
-    });
-    [pageDashboard, pageAnalytics, pageForecast].forEach(p => {
-      if (p) p.classList.add('hidden');
-    });
-  };
+  if (!tabDashboard || !tabAnalytics || !pageDashboard || !pageAnalytics) return;
 
-  if (tabDashboard) {
-    tabDashboard.addEventListener('click', () => {
-      resetNavStyle();
-      pageDashboard.classList.remove('hidden');
-      tabDashboard.className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-    });
-  }
+  tabDashboard.addEventListener('click', () => {
+    pageDashboard.classList.remove('hidden');
+    pageAnalytics.classList.add('hidden');
+    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
+  });
 
-  if (tabAnalytics) {
-    tabAnalytics.addEventListener('click', () => {
-      resetNavStyle();
-      pageAnalytics.classList.remove('hidden');
-      tabAnalytics.className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-      renderAnalyticsPage();
-    });
-  }
-
-  if (tabForecast) {
-    tabForecast.addEventListener('click', () => {
-      resetNavStyle();
-      pageForecast.classList.remove('hidden');
-      tabForecast.className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-      renderForecastPage();
-    });
-  }
+  tabAnalytics.addEventListener('click', () => {
+    pageAnalytics.classList.remove('hidden');
+    pageDashboard.classList.add('hidden');
+    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
+    renderAnalyticsPage();
+  });
 }
 
 function initQuickButtons() {
   document.querySelectorAll('.btn-quick-expense').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const name = e.target.getAttribute('data-name') || e.target.innerText.trim();
+      const name = e.target.getAttribute('data-name') || e.target.innerText.replace(/[^a-zA-Z]/g, '').trim();
       const noteInput = document.getElementById('myExpenseNote');
       const amountInput = document.getElementById('myExpenseAmount');
       if (noteInput) noteInput.value = name;
@@ -198,7 +165,7 @@ function initMyExpensesEvents() {
   if (btnExp) btnExp.addEventListener('click', () => addMyExpenseItem('expense'));
 }
 
-async function addMyExpenseItem(type) {
+function addMyExpenseItem(type) {
   const noteInput = document.getElementById('myExpenseNote');
   const amountInput = document.getElementById('myExpenseAmount');
   if (!noteInput || !amountInput) return;
@@ -215,10 +182,10 @@ async function addMyExpenseItem(type) {
     type
   });
 
-  await saveMyExpenses(myExpenses);
+  saveMyExpenses(myExpenses);
   noteInput.value = '';
   amountInput.value = '';
-  await processCurrentInput();
+  processCurrentInput();
 }
 
 function renderMyExpensesList() {
@@ -246,52 +213,57 @@ function renderMyExpensesList() {
   if (disp) disp.innerText = `${totalCustom.toFixed(1)} €`;
 
   document.querySelectorAll('.btn-del-expense').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
-      await saveMyExpenses(myExpenses);
-      await processCurrentInput();
+      saveMyExpenses(myExpenses);
+      processCurrentInput();
     });
   });
 }
 
-async function processCurrentInput() {
+function processCurrentInput() {
   const rawInput = document.getElementById('rawInput');
   const rawText = rawInput ? rawInput.value : '';
-  await saveRawLogs(rawText);
+  saveRawLogs(rawText);
 
   currentRecordsBatch = parseLogs(rawText);
 
   if (currentRecordsBatch.length > 0) {
-    globalArchiveRecords = await saveGlobalArchive(currentRecordsBatch);
+    globalArchiveRecords = saveGlobalArchive(currentRecordsBatch);
   } else {
-    globalArchiveRecords = await loadGlobalArchive();
+    globalArchiveRecords = loadGlobalArchive();
   }
 
-  let needsPurchaseSave = false;
   currentRecordsBatch.forEach(r => {
     if (r.category && r.category !== 'UNCATEGORIZED' && purchases[r.category] === undefined) {
       purchases[r.category] = 600;
-      needsPurchaseSave = true;
+      savePurchases(purchases);
     }
   });
 
-  if (needsPurchaseSave) {
-    await savePurchases(purchases);
-  }
-
   initPurchasesUI();
 
-  let totalRevenue = 0, totalCash = 0, totalCard = 0, totalCostOfGoods = 0;
-  let totalExactWeight = 0, totalBonusWeight = 0;
-  let totalNewDebts = 0, totalRepaidDebts = 0;
+  let totalRevenue = 0;
+  let totalCash = 0;
+  let totalCard = 0;
+  let totalCostOfGoods = 0;
+  let totalExactWeight = 0;
+  let totalBonusWeight = 0;
+  let totalBonusCost = 0;
+
+  let totalNewDebts = 0;
+  let totalRepaidDebts = 0;
 
   const clientDebtsMap = {};
 
   currentRecordsBatch.forEach(r => {
     totalRevenue += r.eurPaid;
-    if (r.isCard) totalCard += r.eurPaid;
-    else totalCash += r.eurPaid;
+    if (r.isCard) {
+      totalCard += r.eurPaid;
+    } else {
+      totalCash += r.eurPaid;
+    }
 
     totalExactWeight += r.exactGramm;
     totalBonusWeight += r.bonusGramm;
@@ -304,6 +276,7 @@ async function processCurrentInput() {
     const bonusCost = r.bonusGramm * costPerRawGram;
 
     totalCostOfGoods += (baseCost + bonusCost);
+    totalBonusCost += bonusCost;
 
     totalNewDebts += r.debtNew;
     totalRepaidDebts += r.debtRepaid;
@@ -342,14 +315,22 @@ async function processCurrentInput() {
   setTxt('kpiCashCard', `${totalCash.toFixed(0)} / ${totalCard.toFixed(0)} €`);
   setTxt('kpiCostOfGoods', `${totalCostOfGoods.toFixed(1)} €`);
   setTxt('kpiActiveDebt', `${totalActiveDebt.toFixed(1)} €`);
-  setTxt('kpiExactWeight', `${totalExactWeight.toFixed(2)}г`);
-  setTxt('kpiBonusWeight', `${totalBonusWeight.toFixed(2)}г`);
+  setTxt('kpiExactWeight', `${totalExactWeight.toFixed(2)} г`);
+  setTxt('kpiBonusWeight', `${totalBonusWeight.toFixed(2)} г`);
   setTxt('kpiDeals', currentRecordsBatch.length);
+
+  setTxt('myCardTotal', `${totalCard.toFixed(1)} €`);
+  setTxt('myBonusCostTotal', `${totalBonusCost.toFixed(1)} €`);
 
   renderTopClients();
   renderMyExpensesList();
   renderDebts(clientDebtsMap);
   renderCurrentTable(currentRecordsBatch);
+
+  const pageAnalytics = document.getElementById('pageAnalytics');
+  if (pageAnalytics && !pageAnalytics.classList.contains('hidden')) {
+    renderAnalyticsPage();
+  }
 }
 
 function renderTopClients() {
@@ -358,7 +339,7 @@ function renderTopClients() {
 
   const topList = getTopClients(currentRecordsBatch, 3);
   if (topList.length === 0) {
-    container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по поточній сесії</p>';
+    container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по поточній таблиці</p>';
     return;
   }
 
@@ -387,7 +368,7 @@ function initPurchasesUI() {
   `).join('');
 }
 
-async function handleAddPurchase() {
+function handleAddPurchase() {
   const nameInput = document.getElementById('newCatName');
   const costInput = document.getElementById('newCatCost');
   if (!nameInput || !costInput) return;
@@ -397,9 +378,9 @@ async function handleAddPurchase() {
 
   if (name && !isNaN(cost) && cost > 0) {
     purchases[name] = cost;
-    await savePurchases(purchases);
+    savePurchases(purchases);
     initPurchasesUI();
-    await processCurrentInput();
+    processCurrentInput();
     nameInput.value = '';
     costInput.value = '';
   }
@@ -425,7 +406,7 @@ function renderDebts(debtsMap) {
     }
   });
 
-  activeContainer.innerHTML = activeHtml || '<p class="text-gray-500">Немає боржників</p>';
+  activeContainer.innerHTML = activeHtml || '<p class="text-gray-500">Немає боргів</p>';
   repaidContainer.innerHTML = repaidHtml || '<p class="text-gray-500">Немає погашень</p>';
 }
 
@@ -457,7 +438,9 @@ function renderAnalyticsPage() {
   const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
 
   const sortedArchive = [...filtered].sort((a, b) => {
-    if (a.category !== b.category) return a.category.localeCompare(b.category);
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category);
+    }
     return safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj);
   });
 
@@ -480,73 +463,101 @@ function renderAnalyticsPage() {
   const canvasB = document.getElementById('chartBubbleDeals');
 
   if (canvasR) {
-    chartRevenueInstance = new Chart(canvasR.getContext('2d'), {
+    const ctxR = canvasR.getContext('2d');
+    chartRevenueInstance = new Chart(ctxR, {
       type: 'line',
       data: {
         labels,
-        datasets: [{ label: 'Виручка (€)', data: revenues, borderColor: '#00FF88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true }]
+        datasets: [{
+          label: 'Виручка (€)',
+          data: revenues,
+          borderColor: '#00FF88',
+          backgroundColor: 'rgba(0,255,136,0.1)',
+          fill: true,
+          tension: 0.3
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: '#9ca3af' } }, y: { ticks: { color: '#9ca3af' } } } }
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
+        }
+      }
     });
   }
 
   if (canvasW) {
-    chartWeightInstance = new Chart(canvasW.getContext('2d'), {
+    const ctxW = canvasW.getContext('2d');
+    chartWeightInstance = new Chart(ctxW, {
       type: 'bar',
       data: {
         labels,
-        datasets: [{ label: 'Точна вага (г)', data: weights, backgroundColor: '#9D00FF' }]
+        datasets: [{
+          label: 'Точна вага (г)',
+          data: weights,
+          backgroundColor: '#9D00FF'
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: '#9ca3af' } }, y: { ticks: { color: '#9ca3af' } } } }
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
+        }
+      }
     });
   }
 
   if (canvasB) {
-    const bubbleData = filtered.map(r => {
-      const d = safeParseDate(r.parsedDateObj);
-      const hours = d.getHours() + (d.getMinutes() / 60);
-      const money = r.eurPaid || 0;
-      const weight = r.exactGramm || 0;
-      const radius = Math.min(Math.max(weight * 1.2, 4), 22);
+    const ctxB = canvasB.getContext('2d');
+    
+    const bubbleData = filtered
+      .map(r => {
+        const d = safeParseDate(r.parsedDateObj);
+        const hours = d.getHours() + (d.getMinutes() / 60);
+        const money = r.eurPaid || 0;
+        const weight = r.exactGramm || 0;
 
-      return {
-        x: parseFloat(hours.toFixed(2)),
-        y: money,
-        r: radius,
-        rawWeight: weight,
-        client: r.clientName
-      };
-    }).filter(item => !isNaN(item.x) && !isNaN(item.y));
+        const radius = Math.min(Math.max(weight * 1.2, 3), 20);
 
-    chartBubbleInstance = new Chart(canvasB.getContext('2d'), {
+        return { x: parseFloat(hours.toFixed(2)), y: money, r: radius };
+      })
+      .filter(item => !isNaN(item.x) && !isNaN(item.y));
+
+    chartBubbleInstance = new Chart(ctxB, {
       type: 'bubble',
       data: {
         datasets: [{
-          label: 'Угоди',
+          label: 'Угоди (X: Година, Y: Оплата €, R: Вага)',
           data: bubbleData,
           backgroundColor: 'rgba(0, 240, 255, 0.4)',
-          borderColor: '#00F0FF'
+          borderColor: '#00F0FF',
+          borderWidth: 1
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                const raw = context.raw;
-                const hour = Math.floor(raw.x);
-                const mins = Math.round((raw.x - hour) * 60);
-                const timeFormatted = `${String(hour).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-                return `👤 ${raw.client}: ${timeFormatted} — ${raw.y} € (${raw.rawWeight.toFixed(1)} г)`;
-              }
-            }
-          }
-        },
+        plugins: { legend: { labels: { color: '#fff' } } },
         scales: {
-          x: { title: { display: true, text: 'Час доби (0-24h)', color: '#9ca3af' }, min: 0, max: 24, ticks: { color: '#9ca3af' } },
-          y: { title: { display: true, text: 'Сума (€)', color: '#9ca3af' }, beginAtZero: true, ticks: { color: '#9ca3af' } }
+          x: { 
+            title: { display: true, text: 'Година доби (0-24h)', color: '#9ca3af' }, 
+            min: 0, 
+            max: 24,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          },
+          y: { 
+            title: { display: true, text: 'Сума (€)', color: '#9ca3af' }, 
+            beginAtZero: true,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          }
         }
       }
     });
@@ -562,9 +573,12 @@ function renderHeatmap() {
   const { matrix, maxVal } = calculateWeeklyHeatmap(globalArchiveRecords, monthVal);
 
   const dayLabels = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-
-  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1"><div></div>`;
-  for (let h = 0; h < 24; h++) html += `<div>${h}h</div>`;
+  
+  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1">`;
+  html += `<div></div>`;
+  for (let h = 0; h < 24; h++) {
+    html += `<div>${h}h</div>`;
+  }
   html += `</div>`;
 
   dayLabels.forEach((dayName, dayIdx) => {
@@ -575,12 +589,17 @@ function renderHeatmap() {
       const val = matrix[dayIdx][h];
       const intensity = maxVal > 0 ? (val / maxVal) : 0;
       const alpha = val > 0 ? Math.max(intensity, 0.15).toFixed(2) : 0.03;
-      const bgColor = val > 0 ? `rgba(0, 255, 136, ${alpha})` : `rgba(31, 41, 55, 0.3)`;
+      
+      const bgColor = val > 0 
+        ? `rgba(0, 255, 136, ${alpha})` 
+        : `rgba(31, 41, 55, 0.3)`;
+
+      const textColor = intensity > 0.5 ? '#000' : '#fff';
 
       html += `
         <div class="h-7 rounded flex items-center justify-center text-[9px] transition hover:scale-110 cursor-pointer border border-brandBorder/30"
-             style="background-color: ${bgColor}; color: ${intensity > 0.5 ? '#000' : '#fff'};"
-             title="${dayName}, ${h}:00 — Виручка: ${val.toFixed(1)} €">
+             style="background-color: ${bgColor}; color: ${textColor};"
+             title="${dayName}, ${h}:00 - Виручка: ${val.toFixed(1)} €">
           ${val > 0 ? `${Math.round(val)}` : ''}
         </div>
       `;
@@ -601,7 +620,7 @@ function renderArchiveTable(records) {
   if (!tbody) return;
 
   if (records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Архів порожній</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Архів порожній за цей період</td></tr>';
     return;
   }
 
@@ -610,7 +629,9 @@ function renderArchiveTable(records) {
     return `
       <tr class="hover:bg-brandDark/40 transition border-b border-brandBorder/50">
         <td class="p-2 font-bold" style="color: ${color.text}">
-          <span class="px-2 py-0.5 rounded text-[10px]" style="background: ${color.bg}; border: 1px solid ${color.border}">${r.category}</span>
+          <span class="px-2 py-0.5 rounded text-[10px]" style="background: ${color.bg}; border: 1px solid ${color.border}">
+            ${r.category}
+          </span>
         </td>
         <td class="p-2 text-gray-200">${r.clientName}</td>
         <td class="p-2 font-mono">${r.rawGramm}</td>
@@ -622,122 +643,4 @@ function renderArchiveTable(records) {
       </tr>
     `;
   }).join('');
-}
-
-function renderForecastPage() {
-  const records = globalArchiveRecords;
-
-  const tomorrowData = predictTomorrowHourly(records);
-  const weekData = predictNextWeekDaily(records);
-  const monthSummary = predictNextMonthSummary(records);
-
-  const tomTotalRev = tomorrowData.reduce((acc, h) => acc + h.revenue, 0);
-  const tomTotalWeight = tomorrowData.reduce((acc, h) => acc + h.weight, 0);
-
-  const weekTotalRev = weekData.reduce((acc, d) => acc + d.revenue, 0);
-  const weekTotalWeight = weekData.reduce((acc, d) => acc + d.weight, 0);
-
-  const setTxt = (id, txt) => {
-    const el = document.getElementById(id);
-    if (el) el.innerText = txt;
-  };
-
-  setTxt('fcTomorrowRev', `${tomTotalRev.toFixed(1)} €`);
-  setTxt('fcTomorrowWeight', `Очікувана вага: ${tomTotalWeight.toFixed(1)} г`);
-
-  setTxt('fcWeekRev', `${weekTotalRev.toFixed(1)} €`);
-  setTxt('fcWeekWeight', `Очікувана вага: ${weekTotalWeight.toFixed(1)} г`);
-
-  setTxt('fcMonthRev', `${monthSummary.monthlyRevenue.toFixed(1)} €`);
-  setTxt('fcMonthDeals', `Очікувано угод: ~${monthSummary.expectedDeals}`);
-
-  if (typeof Chart === 'undefined') return;
-
-  if (chartFcTomorrowInstance) chartFcTomorrowInstance.destroy();
-  if (chartFcWeekInstance) chartFcWeekInstance.destroy();
-
-  const canvasTom = document.getElementById('chartForecastTomorrow');
-  const canvasWk = document.getElementById('chartForecastWeek');
-
-  if (canvasTom) {
-    chartFcTomorrowInstance = new Chart(canvasTom.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: tomorrowData.map(d => `${d.hour}:00`),
-        datasets: [{
-          label: 'Прогноз Виручки (€)',
-          data: tomorrowData.map(d => d.revenue),
-          borderColor: '#00FF88',
-          backgroundColor: 'rgba(0, 255, 136, 0.15)',
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
-          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  if (canvasWk) {
-    chartFcWeekInstance = new Chart(canvasWk.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: weekData.map(d => `${d.dayName} (${d.dateStr})`),
-        datasets: [{
-          label: 'Прогноз Виручки (€)',
-          data: weekData.map(d => d.revenue),
-          backgroundColor: '#9D00FF',
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
-          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
-        }
-      }
-    });
-  }
-}
-
-function exportArchiveToTxt() {
-  const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
-  if (filtered.length === 0) {
-    alert('Немає даних для експорту.');
-    return;
-  }
-
-  const groupedByCat = {};
-  filtered.forEach(r => {
-    if (!groupedByCat[r.category]) groupedByCat[r.category] = [];
-    groupedByCat[r.category].push(r);
-  });
-
-  let txtLines = [];
-  Object.keys(groupedByCat).forEach(cat => {
-    txtLines.push(`[${cat}]`);
-    groupedByCat[cat].sort((a, b) => safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj));
-    groupedByCat[cat].forEach(r => {
-      txtLines.push(`${r.clientName} | ${r.rawGramm} | ${r.rawMoney} | ${r.timeStr} ${r.rawDebtText ? '| ' + r.rawDebtText : ''}`);
-    });
-    txtLines.push('');
-  });
-
-  const blob = new Blob([txtLines.join('\n')], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `HMS_Export_${currentPeriod}.txt`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
