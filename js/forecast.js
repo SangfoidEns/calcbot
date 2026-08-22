@@ -14,6 +14,8 @@ function calculateLinearRegression(points) {
   }
 
   const denominator = (n * sumXX - sumX * sumX);
+  
+  // Захист від ділення на 0 (якщо всі точки мають однакову координату X)
   if (denominator === 0) return { slope: 0, intercept: sumY / n };
 
   const slope = (n * sumXY - sumX * sumY) / denominator;
@@ -23,13 +25,15 @@ function calculateLinearRegression(points) {
 }
 
 export function generateForecasts(records) {
+  const emptyRes = {
+    tomorrow: { revenue: 0, weight: 0, deals: 0 },
+    week: { revenue: 0, weight: 0, deals: 0 },
+    month: { revenue: 0, weight: 0, deals: 0 },
+    year: { revenue: 0, weight: 0, deals: 0 }
+  };
+
   if (!records || records.length === 0) {
-    return {
-      tomorrow: { revenue: 0, weight: 0, deals: 0 },
-      week: { revenue: 0, weight: 0, deals: 0 },
-      month: { revenue: 0, weight: 0, deals: 0 },
-      year: { revenue: 0, weight: 0, deals: 0 }
-    };
+    return emptyRes;
   }
 
   const dailyMap = {};
@@ -47,6 +51,8 @@ export function generateForecasts(records) {
 
   const sortedDays = Object.values(dailyMap).sort((a, b) => a.timestamp - b.timestamp);
   const totalDays = sortedDays.length;
+
+  if (totalDays === 0) return emptyRes;
 
   const revPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.revenue }));
   const weightPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.weight }));
