@@ -1,646 +1,236 @@
-import { parseLogs } from './parser.js';
-import { 
-  setCurrentUserId, 
-  savePurchases, 
-  loadPurchases, 
-  saveRawLogs, 
-  loadRawLogs, 
-  saveMyExpenses, 
-  loadMyExpenses,
-  saveGlobalArchive,
-  loadGlobalArchive,
-  clearGlobalArchive
-} from './store.js';
-import { 
-  filterRecordsByPeriod, 
-  groupRecordsByTimeSlot, 
-  getTopClients, 
-  calculateWeeklyHeatmap, 
-  safeParseDate 
-} from './analytics.js';
-import { getTelegramUser } from './telegram.js';
-import { exportArchiveToTxt } from './export.js';
+import { generateForecasts } from './forecast.js';
 
-let currentUser = null;
-let purchases = {};
-let myExpenses = [];
+// --- Держава Додатку (State Management) ---
 let currentRecordsBatch = [];
 let globalArchiveRecords = [];
-let currentPeriod = 'week';
+let purchases = {};
+let activeTabIdx = 0;
 
-let chartRevenueInstance = null;
-let chartWeightInstance = null;
-let chartBubbleInstance = null;
+const TAB_IDS = ['pageDashboard', 'pageAnalytics', 'pageForecast'];
+const TAB_BUTTONS = ['tabDashboard', 'tabAnalytics', 'tabForecast'];
 
-const categoryColorMap = {};
-function getCategoryColor(categoryName) {
-  if (!categoryColorMap[categoryName]) {
-    let hash = 0;
-    for (let i = 0; i < categoryName.length; i++) {
-      hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+// --- Ініціалізація Telegram WebApp ---
+function initTelegramApp() {
+  if (window.Telegram?.WebApp) {
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    
+    const user = tg.initDataUnsafe?.user;
+    if (user) {
+      const avatarEl = document.getElementById('userAvatar');
+      const nameEl = document.getElementById('userName');
+      if (avatarEl) avatarEl.innerText = (user.first_name || 'U')[0].toUpperCase();
+      if (nameEl) nameEl.innerText = user.first_name || 'Користувач';
     }
-    const hue = Math.abs(hash) % 360;
-    categoryColorMap[categoryName] = {
-      bg: `hsla(${hue}, 85%, 60%, 0.15)`,
-      border: `hsla(${hue}, 85%, 60%, 0.5)`,
-      text: `hsl(${hue}, 90%, 65%)`
-    };
   }
-  return categoryColorMap[categoryName];
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initUserSession();
+// --- Управління Табами та Свайпами ---
+function setActiveTab(index) {
+  if (index < 0 || index >= TAB_IDS.length) return;
+  
+  activeTabIdx = index;
 
-  purchases = loadPurchases();
-  myExpenses = loadMyExpenses();
-  globalArchiveRecords = loadGlobalArchive();
-
-  initNavigation();
-  initPurchasesUI();
-  initQuickButtons();
-  initMyExpensesEvents();
-
-  const rawInputEl = document.getElementById('rawInput');
-  if (rawInputEl) {
-    rawInputEl.value = loadRawLogs();
-  }
-
-  processCurrentInput();
-
-  const btnCalc = document.getElementById('btnCalculate');
-  if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
-
-  const btnAddPur = document.getElementById('btnAddPurchase');
-  if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
-
-  const btnClearArch = document.getElementById('btnClearArchive');
-  if (btnClearArch) {
-    btnClearArch.addEventListener('click', () => {
-      if (confirm('Дійсно очистити весь глобальний архів?')) {
-        clearGlobalArchive();
-        globalArchiveRecords = [];
-        renderAnalyticsPage();
+  TAB_IDS.forEach((id, i) => {
+    const section = document.getElementById(id);
+    if (section) {
+      if (i === index) {
+        section.classList.remove('hidden');
+      } else {
+        section.classList.add('hidden');
       }
-    });
-  }
-
-  const btnExport = document.getElementById('btnExportTxt');
-  if (btnExport) {
-    btnExport.addEventListener('click', () => exportArchiveToTxt(globalArchiveRecords, currentPeriod));
-  }
-
-  document.querySelectorAll('.btn-period').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.btn-period').forEach(b => {
-        b.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
-      });
-      e.target.className = 'btn-period px-3 py-1 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-      currentPeriod = e.target.getAttribute('data-period');
-      renderAnalyticsPage();
-    });
-  });
-});
-
-function initUserSession() {
-  currentUser = getTelegramUser();
-  setCurrentUserId(currentUser.id);
-
-  const userNameEl = document.getElementById('userName');
-  const userHandleEl = document.getElementById('userHandle');
-  const userAvatarEl = document.getElementById('userAvatar');
-
-  if (userNameEl) userNameEl.innerText = `${currentUser.firstName} ${currentUser.lastName}`.trim();
-  if (userHandleEl) userHandleEl.innerText = currentUser.username || `id: ${currentUser.id}`;
-
-  if (userAvatarEl) {
-    if (currentUser.photoUrl) {
-      userAvatarEl.innerHTML = `<img src="${currentUser.photoUrl}" class="w-full h-full rounded-full object-cover">`;
-    } else {
-      userAvatarEl.innerText = (currentUser.firstName.charAt(0) || 'U').toUpperCase();
     }
+  });
+
+  TAB_BUTTONS.forEach((btnId, i) => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      if (i === index) {
+        btn.className = 'px-3 py-1.5 rounded-xl bg-tgBlue text-white shadow-lg transition-all duration-200';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-xl text-gray-400 hover:text-white transition-all duration-200';
+      }
+    }
+  });
+
+  // Третя сторінка — рахуємо прогноз при відкритті
+  if (index === 2) {
+    renderForecastPage();
   }
 }
 
-function initNavigation() {
-  const tabDashboard = document.getElementById('tabDashboard');
-  const tabAnalytics = document.getElementById('tabAnalytics');
-  const pageDashboard = document.getElementById('pageDashboard');
-  const pageAnalytics = document.getElementById('pageAnalytics');
+function initSwipeGestures() {
+  let startX = 0;
+  let startY = 0;
+  const container = document.getElementById('swipeContainer');
 
-  if (!tabDashboard || !tabAnalytics || !pageDashboard || !pageAnalytics) return;
-
-  tabDashboard.addEventListener('click', () => {
-    pageDashboard.classList.remove('hidden');
-    pageAnalytics.classList.add('hidden');
-    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
-  });
-
-  tabAnalytics.addEventListener('click', () => {
-    pageAnalytics.classList.remove('hidden');
-    pageDashboard.classList.add('hidden');
-    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
-    renderAnalyticsPage();
-  });
-}
-
-function initQuickButtons() {
-  document.querySelectorAll('.btn-quick-expense').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const name = e.target.getAttribute('data-name') || e.target.innerText.replace(/[^a-zA-Z]/g, '').trim();
-      const noteInput = document.getElementById('myExpenseNote');
-      const amountInput = document.getElementById('myExpenseAmount');
-      if (noteInput) noteInput.value = name;
-      if (amountInput) amountInput.focus();
-    });
-  });
-}
-
-function initMyExpensesEvents() {
-  const btnInc = document.getElementById('btnAddIncome');
-  const btnExp = document.getElementById('btnAddExpense');
-  if (btnInc) btnInc.addEventListener('click', () => addMyExpenseItem('income'));
-  if (btnExp) btnExp.addEventListener('click', () => addMyExpenseItem('expense'));
-}
-
-function addMyExpenseItem(type) {
-  const noteInput = document.getElementById('myExpenseNote');
-  const amountInput = document.getElementById('myExpenseAmount');
-  if (!noteInput || !amountInput) return;
-
-  const note = noteInput.value.trim();
-  const amount = parseFloat(amountInput.value);
-
-  if (!note || isNaN(amount) || amount <= 0) return;
-
-  myExpenses.push({
-    id: Date.now(),
-    note,
-    amount: type === 'expense' ? -amount : amount,
-    type
-  });
-
-  saveMyExpenses(myExpenses);
-  noteInput.value = '';
-  amountInput.value = '';
-  processCurrentInput();
-}
-
-function renderMyExpensesList() {
-  const container = document.getElementById('myExpensesList');
   if (!container) return;
 
-  let totalCustom = 0;
-  container.innerHTML = myExpenses.map((item, idx) => {
-    totalCustom += item.amount;
-    const isInc = item.amount > 0;
-    return `
-      <div class="flex justify-between items-center bg-brandDark p-1.5 rounded border border-brandBorder text-[11px]">
-        <span class="text-gray-300">${item.note}</span>
-        <div class="flex items-center gap-2">
-          <span class="font-mono font-bold ${isInc ? 'text-emerald-400' : 'text-neonRed'}">
-            ${isInc ? '+' : ''}${item.amount} €
-          </span>
-          <button data-idx="${idx}" class="btn-del-expense text-gray-500 hover:text-red-400 font-bold">✕</button>
-        </div>
-      </div>
-    `;
-  }).join('');
+  container.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
 
-  const disp = document.getElementById('myTotalDisplay');
-  if (disp) disp.innerText = `${totalCustom.toFixed(1)} €`;
+  container.addEventListener('touchend', (e) => {
+    const diffX = e.changedTouches[0].clientX - startX;
+    const diffY = e.changedTouches[0].clientY - startY;
 
-  document.querySelectorAll('.btn-del-expense').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const idx = parseInt(e.target.getAttribute('data-idx'), 10);
-      myExpenses.splice(idx, 1);
-      saveMyExpenses(myExpenses);
-      processCurrentInput();
-    });
-  });
-}
-
-function processCurrentInput() {
-  const rawInput = document.getElementById('rawInput');
-  const rawText = rawInput ? rawInput.value : '';
-  saveRawLogs(rawText);
-
-  currentRecordsBatch = parseLogs(rawText);
-
-  if (currentRecordsBatch.length > 0) {
-    globalArchiveRecords = saveGlobalArchive(currentRecordsBatch);
-  } else {
-    globalArchiveRecords = loadGlobalArchive();
-  }
-
-  currentRecordsBatch.forEach(r => {
-    if (r.category && r.category !== 'UNCATEGORIZED' && purchases[r.category] === undefined) {
-      purchases[r.category] = 600;
-      savePurchases(purchases);
+    // Перевіряємо, що свайп був горизонтальним (а не скролом сторінки)
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+      if (diffX < 0 && activeTabIdx < TAB_IDS.length - 1) {
+        setActiveTab(activeTabIdx + 1); // Свайп вліво -> Наступна вкладка
+      } else if (diffX > 0 && activeTabIdx > 0) {
+        setActiveTab(activeTabIdx - 1); // Свайп вправо -> Попередня вкладка
+      }
     }
-  });
-
-  initPurchasesUI();
-
-  let totalRevenue = 0;
-  let totalCash = 0;
-  let totalCard = 0;
-  let totalCostOfGoods = 0;
-  let totalExactWeight = 0;
-  let totalBonusWeight = 0;
-  let totalBonusCost = 0;
-
-  let totalNewDebts = 0;
-  let totalRepaidDebts = 0;
-
-  const clientDebtsMap = {};
-
-  currentRecordsBatch.forEach(r => {
-    totalRevenue += r.eurPaid;
-    if (r.isCard) {
-      totalCard += r.eurPaid;
-    } else {
-      totalCash += r.eurPaid;
-    }
-
-    totalExactWeight += r.exactGramm;
-    totalBonusWeight += r.bonusGramm;
-
-    const costFor100g = purchases[r.category] || 0;
-    const costPerExactGram = costFor100g / 110; 
-    const costPerRawGram = costFor100g / 100;
-
-    const baseCost = (r.baseGramm * 1.1) * costPerExactGram;
-    const bonusCost = r.bonusGramm * costPerRawGram;
-
-    totalCostOfGoods += (baseCost + bonusCost);
-    totalBonusCost += bonusCost;
-
-    totalNewDebts += r.debtNew;
-    totalRepaidDebts += r.debtRepaid;
-
-    if (!clientDebtsMap[r.clientName]) {
-      clientDebtsMap[r.clientName] = { newDebt: 0, repaidDebt: 0 };
-    }
-    clientDebtsMap[r.clientName].newDebt += r.debtNew;
-    clientDebtsMap[r.clientName].repaidDebt += r.debtRepaid;
-  });
-
-  let totalActiveDebt = 0;
-  Object.keys(clientDebtsMap).forEach(client => {
-    const netDebt = clientDebtsMap[client].newDebt - clientDebtsMap[client].repaidDebt;
-    if (netDebt > 0) totalActiveDebt += netDebt;
-  });
-
-  const pureMyExpenses = myExpenses
-    .filter(item => item.amount < 0)
-    .reduce((acc, item) => acc + Math.abs(item.amount), 0);
-
-  const netProfit = totalRevenue - totalCostOfGoods;
-  const factNetProfit = netProfit - pureMyExpenses;
-  const factReceived = totalRevenue - totalNewDebts + totalRepaidDebts - pureMyExpenses;
-
-  const setTxt = (id, txt) => {
-    const el = document.getElementById(id);
-    if (el) el.innerText = txt;
-  };
-
-  setTxt('kpiRevenue', `${totalRevenue.toFixed(1)} €`);
-  setTxt('kpiFactReceived', `${factReceived.toFixed(1)} €`);
-  setTxt('kpiNetProfit', `${netProfit.toFixed(1)} €`);
-  setTxt('kpiFactNetProfit', `${factNetProfit.toFixed(1)} €`);
-
-  setTxt('kpiCashCard', `${totalCash.toFixed(0)} / ${totalCard.toFixed(0)} €`);
-  setTxt('kpiCostOfGoods', `${totalCostOfGoods.toFixed(1)} €`);
-  setTxt('kpiActiveDebt', `${totalActiveDebt.toFixed(1)} €`);
-  setTxt('kpiExactWeight', `${totalExactWeight.toFixed(2)} г`);
-  setTxt('kpiBonusWeight', `${totalBonusWeight.toFixed(2)} г`);
-  setTxt('kpiDeals', currentRecordsBatch.length);
-
-  setTxt('myCardTotal', `${totalCard.toFixed(1)} €`);
-  setTxt('myBonusCostTotal', `${totalBonusCost.toFixed(1)} €`);
-
-  renderTopClients();
-  renderMyExpensesList();
-  renderDebts(clientDebtsMap);
-  renderCurrentTable(currentRecordsBatch);
-
-  const pageAnalytics = document.getElementById('pageAnalytics');
-  if (pageAnalytics && !pageAnalytics.classList.contains('hidden')) {
-    renderAnalyticsPage();
-  }
+  }, { passive: true });
 }
 
-function renderTopClients() {
-  const container = document.getElementById('topClientsList');
-  if (!container) return;
-
-  const topList = getTopClients(currentRecordsBatch, 3);
-  if (topList.length === 0) {
-    container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">Немає даних по поточній таблиці</p>';
-    return;
-  }
-
-  container.innerHTML = topList.map((c, i) => `
-    <div class="bg-brandDark p-3 rounded-xl border border-brandBorder flex flex-col justify-between space-y-1">
-      <div class="flex justify-between items-center">
-        <span class="text-xs font-bold text-white">${i + 1}. ${c.clientName}</span>
-        <span class="text-[10px] bg-neonBlue/20 text-neonBlue font-mono px-1.5 py-0.5 rounded">${c.dealsCount} угод</span>
-      </div>
-      <div class="text-[11px] font-mono flex justify-between pt-1">
-        <span class="text-neonGreen font-bold">${c.totalSpent.toFixed(1)} €</span>
-        <span class="text-gray-400">${c.totalWeight.toFixed(1)} г</span>
-      </div>
-    </div>
-  `).join('');
-}
-
-function initPurchasesUI() {
-  const container = document.getElementById('purchasesList');
-  if (!container) return;
-  container.innerHTML = Object.keys(purchases).map(cat => `
-    <div class="flex justify-between items-center bg-brandDark p-1.5 rounded border border-brandBorder">
-      <span class="font-bold text-gray-300">${cat}</span>
-      <span class="font-mono text-neonYellow">${purchases[cat]} € / 100g</span>
-    </div>
-  `).join('');
-}
-
-function handleAddPurchase() {
-  const nameInput = document.getElementById('newCatName');
-  const costInput = document.getElementById('newCatCost');
-  if (!nameInput || !costInput) return;
-
-  const name = nameInput.value.trim().toUpperCase();
-  const cost = parseFloat(costInput.value);
-
-  if (name && !isNaN(cost) && cost > 0) {
-    purchases[name] = cost;
-    savePurchases(purchases);
-    initPurchasesUI();
-    processCurrentInput();
-    nameInput.value = '';
-    costInput.value = '';
-  }
-}
-
-function renderDebts(debtsMap) {
-  const activeContainer = document.getElementById('activeDebtsList');
-  const repaidContainer = document.getElementById('repaidDebtsList');
-  if (!activeContainer || !repaidContainer) return;
-
-  let activeHtml = '';
-  let repaidHtml = '';
-
-  Object.keys(debtsMap).forEach(client => {
-    const { newDebt, repaidDebt } = debtsMap[client];
-    const balance = newDebt - repaidDebt;
-
-    if (balance > 0) {
-      activeHtml += `<div class="flex justify-between"><span>${client}</span><span class="text-neonRed font-bold">-${balance.toFixed(1)} €</span></div>`;
-    }
-    if (repaidDebt > 0) {
-      repaidHtml += `<div class="flex justify-between"><span>${client}</span><span class="text-emerald-400 font-bold">+${repaidDebt.toFixed(1)} €</span></div>`;
-    }
-  });
-
-  activeContainer.innerHTML = activeHtml || '<p class="text-gray-500">Немає боргів</p>';
-  repaidContainer.innerHTML = repaidHtml || '<p class="text-gray-500">Немає погашень</p>';
-}
-
+// --- Рендеринг Таблиці з підсвічуванням ≥ 50€ ---
 function renderCurrentTable(records) {
   const tbody = document.getElementById('recordsTableBody');
   if (!tbody) return;
 
-  tbody.innerHTML = records.map(r => {
-    const color = getCategoryColor(r.category);
-    return `
-      <tr class="hover:bg-brandDark/40 transition">
-        <td class="p-2 font-bold" style="color: ${color.text}">${r.category}</td>
-        <td class="p-2 text-gray-200">${r.clientName}</td>
-        <td class="p-2 font-mono">${r.baseGramm} ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
-        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
-        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
-        <td class="p-2 font-bold">${r.eurPaid} €</td>
-        <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
-        <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
-      </tr>
-    `;
-  }).join('');
-}
-
-function renderAnalyticsPage() {
-  const archiveTotalCountEl = document.getElementById('archiveTotalCount');
-  if (archiveTotalCountEl) archiveTotalCountEl.innerText = globalArchiveRecords.length;
-
-  const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod);
-
-  const sortedArchive = [...filtered].sort((a, b) => {
-    if (a.category !== b.category) {
-      return a.category.localeCompare(b.category);
-    }
-    return safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj);
-  });
-
-  renderArchiveTable(sortedArchive);
-  renderHeatmap();
-
-  if (typeof Chart === 'undefined') return;
-
-  const grouped = groupRecordsByTimeSlot(filtered, currentPeriod);
-  const labels = Object.keys(grouped);
-  const revenues = labels.map(k => grouped[k].revenue);
-  const weights = labels.map(k => grouped[k].weight);
-
-  if (chartRevenueInstance) chartRevenueInstance.destroy();
-  if (chartWeightInstance) chartWeightInstance.destroy();
-  if (chartBubbleInstance) chartBubbleInstance.destroy();
-
-  const canvasR = document.getElementById('chartTimeRevenue');
-  const canvasW = document.getElementById('chartTimeWeight');
-  const canvasB = document.getElementById('chartBubbleDeals');
-
-  if (canvasR) {
-    const ctxR = canvasR.getContext('2d');
-    chartRevenueInstance = new Chart(ctxR, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Виручка (€)',
-          data: revenues,
-          borderColor: '#00FF88',
-          backgroundColor: 'rgba(0,255,136,0.1)',
-          fill: true,
-          tension: 0.3
-        }]
-      },
-      options: { 
-        responsive: true, 
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#fff' } } },
-        scales: {
-          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
-          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  if (canvasW) {
-    const ctxW = canvasW.getContext('2d');
-    chartWeightInstance = new Chart(ctxW, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Точна вага (г)',
-          data: weights,
-          backgroundColor: '#9D00FF'
-        }]
-      },
-      options: { 
-        responsive: true, 
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#fff' } } },
-        scales: {
-          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
-          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  if (canvasB) {
-    const ctxB = canvasB.getContext('2d');
-    
-    const bubbleData = filtered
-      .map(r => {
-        const d = safeParseDate(r.parsedDateObj);
-        const hours = d.getHours() + (d.getMinutes() / 60);
-        const money = r.eurPaid || 0;
-        const weight = r.exactGramm || 0;
-
-        const radius = Math.min(Math.max(weight * 1.2, 3), 20);
-
-        return { x: parseFloat(hours.toFixed(2)), y: money, r: radius };
-      })
-      .filter(item => !isNaN(item.x) && !isNaN(item.y));
-
-    chartBubbleInstance = new Chart(ctxB, {
-      type: 'bubble',
-      data: {
-        datasets: [{
-          label: 'Угоди (X: Година, Y: Оплата €, R: Вага)',
-          data: bubbleData,
-          backgroundColor: 'rgba(0, 240, 255, 0.4)',
-          borderColor: '#00F0FF',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#fff' } } },
-        scales: {
-          x: { 
-            title: { display: true, text: 'Година доби (0-24h)', color: '#9ca3af' }, 
-            min: 0, 
-            max: 24,
-            ticks: { color: '#9ca3af' },
-            grid: { color: '#1f2937' }
-          },
-          y: { 
-            title: { display: true, text: 'Сума (€)', color: '#9ca3af' }, 
-            beginAtZero: true,
-            ticks: { color: '#9ca3af' },
-            grid: { color: '#1f2937' }
-          }
-        }
-      }
-    });
-  }
-}
-
-function renderHeatmap() {
-  const container = document.getElementById('heatmapGrid');
-  const selectEl = document.getElementById('heatmapMonthSelect');
-  if (!container) return;
-
-  const monthVal = selectEl ? selectEl.value : 'all';
-  const { matrix, maxVal } = calculateWeeklyHeatmap(globalArchiveRecords, monthVal);
-
-  const dayLabels = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-  
-  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1">`;
-  html += `<div></div>`;
-  for (let h = 0; h < 24; h++) {
-    html += `<div>${h}h</div>`;
-  }
-  html += `</div>`;
-
-  dayLabels.forEach((dayName, dayIdx) => {
-    html += `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center">`;
-    html += `<div class="text-gray-300 font-bold text-right pr-2">${dayName}</div>`;
-
-    for (let h = 0; h < 24; h++) {
-      const val = matrix[dayIdx][h];
-      const intensity = maxVal > 0 ? (val / maxVal) : 0;
-      const alpha = val > 0 ? Math.max(intensity, 0.15).toFixed(2) : 0.03;
-      
-      const bgColor = val > 0 
-        ? `rgba(0, 255, 136, ${alpha})` 
-        : `rgba(31, 41, 55, 0.3)`;
-
-      const textColor = intensity > 0.5 ? '#000' : '#fff';
-
-      html += `
-        <div class="h-7 rounded flex items-center justify-center text-[9px] transition hover:scale-110 cursor-pointer border border-brandBorder/30"
-             style="background-color: ${bgColor}; color: ${textColor};"
-             title="${dayName}, ${h}:00 - Виручка: ${val.toFixed(1)} €">
-          ${val > 0 ? `${Math.round(val)}` : ''}
-        </div>
-      `;
-    }
-    html += `</div>`;
-  });
-
-  container.innerHTML = html;
-
-  if (selectEl && !selectEl.dataset.initialized) {
-    selectEl.addEventListener('change', () => renderHeatmap());
-    selectEl.dataset.initialized = 'true';
-  }
-}
-
-function renderArchiveTable(records) {
-  const tbody = document.getElementById('archiveTableBody');
-  if (!tbody) return;
-
-  if (records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Архів порожній за цей період</td></tr>';
+  if (!records || records.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-500 font-sans">Немає записів для відображення</td></tr>`;
     return;
   }
 
   tbody.innerHTML = records.map(r => {
-    const color = getCategoryColor(r.category);
+    const isHighValue = (r.eurPaid || 0) >= 50;
+    
+    // Стилізація для високих чеків (≥ 50€)
+    const rowStyle = isHighValue 
+      ? 'bg-amber-500/10 border-l-4 border-amber-400 font-bold' 
+      : 'hover:bg-white/5';
+
     return `
-      <tr class="hover:bg-brandDark/40 transition border-b border-brandBorder/50">
-        <td class="p-2 font-bold" style="color: ${color.text}">
-          <span class="px-2 py-0.5 rounded text-[10px]" style="background: ${color.bg}; border: 1px solid ${color.border}">
-            ${r.category}
-          </span>
-        </td>
-        <td class="p-2 text-gray-200">${r.clientName}</td>
-        <td class="p-2 font-mono">${r.rawGramm}</td>
-        <td class="p-2 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)}г</td>
-        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
-        <td class="p-2 font-bold">${r.eurPaid} €</td>
-        <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
-        <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
+      <tr class="transition-colors ${rowStyle}">
+        <td class="p-2.5 font-bold text-white">${r.category || 'Загальне'}</td>
+        <td class="p-2.5 text-gray-200">${r.clientName || 'Гість'}</td>
+        <td class="p-2.5 font-mono">${r.baseGramm || 0}g ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+${r.bonusGramm}б</span>` : ''}</td>
+        <td class="p-2.5 font-mono text-neonGreen">${(r.exactGramm || 0).toFixed(2)}g</td>
+        <td class="p-2.5">${r.isCard ? '<span class="text-tgBlue font-medium">💳 Карта</span>' : '<span class="text-gray-300">💵 Готівка</span>'}</td>
+        <td class="p-2.5 ${isHighValue ? 'text-amber-300 font-extrabold text-sm' : 'text-white'}">${r.eurPaid || 0} €</td>
+        <td class="p-2.5 text-neonRed font-medium">${r.rawDebtText || '-'}</td>
+        <td class="p-2.5 text-gray-400 text-[10px]">${r.timeStr || '--:--'}</td>
       </tr>
     `;
   }).join('');
 }
+
+// --- Рендеринг Топ Клієнтів з Аккордеоном (Останні 3 покупки) ---
+function renderTopClients(records) {
+  const container = document.getElementById('topClientsList');
+  if (!container) return;
+
+  // Агрегація даних по клієнтах
+  const clientStats = {};
+  records.forEach(r => {
+    const name = r.clientName || 'Невідомий';
+    if (!clientStats[name]) {
+      clientStats[name] = { totalSpent: 0, totalWeight: 0, deals: [] };
+    }
+    clientStats[name].totalSpent += (r.eurPaid || 0);
+    clientStats[name].totalWeight += (r.exactGramm || 0);
+    clientStats[name].deals.push(r);
+  });
+
+  const sortedClients = Object.entries(clientStats)
+    .map(([clientName, data]) => ({ clientName, ...data }))
+    .sort((a, b) => b.totalSpent - a.totalSpent)
+    .slice(0, 5);
+
+  if (sortedClients.length === 0) {
+    container.innerHTML = '<p class="text-xs text-gray-500">Список порожній</p>';
+    return;
+  }
+
+  container.innerHTML = sortedClients.map((c, i) => {
+    const lastThreeDeals = c.deals.slice(-3).reverse();
+
+    return `
+      <details class="group bg-slate-950/60 rounded-2xl border border-glassBorder overflow-hidden transition-all">
+        <summary class="flex justify-between items-center p-3 cursor-pointer select-none hover:bg-white/5 transition">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-white">${i + 1}. ${c.clientName}</span>
+            <span class="text-[10px] bg-tgBlue/20 text-tgBlue px-2 py-0.5 rounded-full font-mono font-bold">${c.deals.length} угод</span>
+          </div>
+          <div class="text-xs font-mono font-bold text-neonGreen">
+            ${c.totalSpent.toFixed(1)} € / ${c.totalWeight.toFixed(1)}g
+          </div>
+        </summary>
+        <div class="px-3 pb-3 space-y-1.5 pt-2 border-t border-glassBorder/40 bg-slate-900/40">
+          <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Останні 3 покупки:</div>
+          ${lastThreeDeals.map(d => `
+            <div class="flex justify-between items-center text-[11px] font-mono text-gray-300">
+              <span>${d.category || 'Загальне'} (${(d.exactGramm || 0).toFixed(1)}g)</span>
+              <span class="text-white font-bold">${d.eurPaid || 0} €</span>
+            </div>
+          `).join('')}
+        </div>
+      </details>
+    `;
+  }).join('');
+}
+
+// --- Обробка та Рендеринг Прогнозу (Сторінка 3) ---
+function renderForecastPage() {
+  const forecasts = generateForecasts(globalArchiveRecords);
+
+  const updateCard = (prefix, data) => {
+    const revEl = document.getElementById(`${prefix}Rev`);
+    const detailsEl = document.getElementById(`${prefix}Details`);
+    if (revEl) revEl.innerText = `${data.revenue} €`;
+    if (detailsEl) detailsEl.innerText = `${data.weight}g • ${data.deals} угод`;
+  };
+
+  updateCard('fcDay', forecasts.tomorrow);
+  updateCard('fcWeek', forecasts.week);
+  updateCard('fcMonth', forecasts.month);
+  updateCard('fcYear', forecasts.year);
+}
+
+// --- Події та завантаження ---
+document.addEventListener('DOMContentLoaded', () => {
+  initTelegramApp();
+  initSwipeGestures();
+
+  // Прив'язка кнопок перемикання вкладок
+  TAB_BUTTONS.forEach((btnId, idx) => {
+    document.getElementById(btnId)?.addEventListener('click', () => setActiveTab(idx));
+  });
+
+  // Кнопка очищення текстового поля вводу
+  const btnClearInput = document.getElementById('btnClearInput');
+  const rawInput = document.getElementById('rawInput');
+  
+  if (btnClearInput && rawInput) {
+    btnClearInput.addEventListener('click', () => {
+      rawInput.value = '';
+      currentRecordsBatch = [];
+      renderCurrentTable([]);
+      renderTopClients([]);
+      rawInput.focus();
+    });
+  }
+
+  // Обробник додавання закупівель з грамами
+  document.getElementById('btnAddPurchase')?.addEventListener('click', () => {
+    const nameInput = document.getElementById('newCatName');
+    const costInput = document.getElementById('newCatCost');
+    const gramsInput = document.getElementById('newCatGrams');
+
+    const name = nameInput.value.trim().toUpperCase();
+    const cost = parseFloat(costInput.value);
+    const grams = parseFloat(gramsInput.value) || 0;
+
+    if (name && !isNaN(cost) && cost > 0) {
+      purchases[name] = { costPer100g: cost, totalGramsPurchased: grams };
+      nameInput.value = '';
+      costInput.value = '';
+      gramsInput.value = '';
+    }
+  });
+});
