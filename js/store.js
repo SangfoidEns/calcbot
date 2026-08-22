@@ -1,93 +1,56 @@
-let currentUserId = 'default';
+let currentUserId = 'default_user';
 
 export function setCurrentUserId(userId) {
-  currentUserId = userId || 'default';
+  if (userId) currentUserId = userId.toString();
 }
 
-function getScopedKey(key) {
+function getKey(key) {
   return `hms2_${currentUserId}_${key}`;
 }
 
 export function savePurchases(data) {
-  try {
-    localStorage.setItem(getScopedKey('purchases_v2'), JSON.stringify(data));
-  } catch (e) {
-    console.error('Storage error:', e);
-  }
+  localStorage.setItem(getKey('purchases'), JSON.stringify(data));
 }
 
 export function loadPurchases() {
-  try {
-    const raw = localStorage.getItem(getScopedKey('purchases_v2'));
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    return {};
-  }
+  const data = localStorage.getItem(getKey('purchases'));
+  return data ? JSON.parse(data) : {};
 }
 
 export function saveRawLogs(text) {
-  try {
-    localStorage.setItem(getScopedKey('raw_logs_v2'), text);
-  } catch (e) {
-    console.error('Storage error:', e);
-  }
+  localStorage.setItem(getKey('raw_logs'), text);
 }
 
 export function loadRawLogs() {
-  try {
-    return localStorage.getItem(getScopedKey('raw_logs_v2')) || '';
-  } catch (e) {
-    return '';
-  }
+  return localStorage.getItem(getKey('raw_logs')) || '';
 }
 
-export function saveMyExpenses(data) {
-  try {
-    localStorage.setItem(getScopedKey('my_expenses_v2'), JSON.stringify(data));
-  } catch (e) {
-    console.error('Storage error:', e);
-  }
+export function saveMyExpenses(expensesArr) {
+  localStorage.setItem(getKey('my_expenses'), JSON.stringify(expensesArr));
 }
 
 export function loadMyExpenses() {
-  try {
-    const raw = localStorage.getItem(getScopedKey('my_expenses_v2'));
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
+  const data = localStorage.getItem(getKey('my_expenses'));
+  return data ? JSON.parse(data) : [];
 }
 
-export function saveGlobalArchive(newRecords) {
-  try {
-    const existingArchive = loadGlobalArchive();
-    const map = new Map();
+export function saveGlobalArchive(newRecordsBatch) {
+  const existing = loadGlobalArchive();
+  const map = new Map();
 
-    existingArchive.forEach(item => map.set(item.id, item));
-    newRecords.forEach(item => map.set(item.id, item));
+  existing.forEach(item => map.set(item.id, item));
+  newRecordsBatch.forEach(item => map.set(item.id, item));
 
-    const updatedArchive = Array.from(map.values());
-    localStorage.setItem(getScopedKey('global_archive_v2'), JSON.stringify(updatedArchive));
-    return updatedArchive;
-  } catch (e) {
-    console.error('Archive Storage Error:', e);
-    return [];
-  }
+  const updatedArr = Array.from(map.values());
+  localStorage.setItem(getKey('global_archive'), JSON.stringify(updatedArr));
+  return updatedArr;
 }
 
 export function loadGlobalArchive() {
-  try {
-    const raw = localStorage.getItem(getScopedKey('global_archive_v2'));
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
+  const data = localStorage.getItem(getKey('global_archive'));
+  return data ? JSON.parse(data) : [];
 }
 
 export function clearGlobalArchive() {
-  try {
-    localStorage.removeItem(getScopedKey('global_archive_v2'));
-  } catch (e) {
-    console.error(e);
-  }
+  localStorage.removeItem(getKey('global_archive'));
 }
