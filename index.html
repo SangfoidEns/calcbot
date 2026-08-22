@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>HMS2.0 Engine Analytics</title>
+  <title>Humans2.0 MiniApp</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { background-color: #0b0f19; color: #f3f4f6; }
+    body { background-color: #0b0f19; color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
     .neon-wall {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: radial-gradient(circle at 50% 20%, rgba(157,0,255,0.08) 0%, transparent 50%),
@@ -16,211 +15,305 @@
       pointer-events: none; z-index: 0;
     }
   </style>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brandDark: '#0b0f19', brandCard: '#111827', brandBorder: '#1f2937',
-            neonGreen: '#00FF88', neonPurple: '#9D00FF', neonBlue: '#00F0FF',
-            neonYellow: '#FFE600', neonRed: '#FF0055'
-          }
-        }
-      }
-    }
-  </script>
 </head>
-<body class="font-sans min-h-screen relative overflow-x-hidden">
+<body class="font-sans min-h-screen relative overflow-x-hidden p-3 pb-10">
 
   <div class="neon-wall"></div>
 
-  <div class="max-w-7xl mx-auto p-4 space-y-6 relative z-10">
+  <div class="max-w-md mx-auto space-y-4 relative z-10">
 
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row justify-between items-center gap-4 bg-brandCard/90 p-4 rounded-2xl border border-brandBorder shadow-2xl">
+    <!-- Header / User Bar -->
+    <header class="flex justify-between items-center bg-gray-900/90 p-3 rounded-2xl border border-gray-800">
       <div class="flex items-center gap-3">
-        <div class="w-3 h-3 rounded-full bg-neonGreen animate-ping"></div>
-        <h1 class="text-lg font-extrabold tracking-wider uppercase text-white">
-          HMS2.0 <span class="text-neonGreen">ENGINE ANALYTICS</span>
-        </h1>
-      </div>
-
-      <div id="userProfileWidget" class="flex items-center gap-3 bg-brandDark px-3 py-1.5 rounded-xl border border-brandBorder">
-        <div id="userAvatar" class="w-7 h-7 rounded-full bg-neonPurple/30 text-neonPurple font-bold flex items-center justify-center text-xs border border-neonPurple/50">
+        <div id="userAvatar" class="w-8 h-8 rounded-full bg-purple-600/30 text-purple-400 font-bold flex items-center justify-center text-xs border border-purple-500/50">
           ?
         </div>
-        <div class="flex flex-col text-left">
-          <span id="userName" class="text-xs font-bold text-white leading-none">Завантаження...</span>
+        <div class="flex flex-col">
+          <span id="userName" class="text-xs font-bold text-white leading-none">Пошук сесії...</span>
           <span id="userHandle" class="text-[10px] font-mono text-gray-400">@id</span>
         </div>
       </div>
-
-      <nav class="flex gap-2">
-        <button id="tabDashboard" onclick="switchTab('dashboard')" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40">Дашборд</button>
-        <button id="tabAnalytics" onclick="switchTab('analytics')" class="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-400 hover:text-white">Архів & Аналітика</button>
-        <button id="tabForecast" onclick="switchTab('forecast')" class="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-400 hover:text-white">🔮 Прогноз</button>
-      </nav>
+      <span id="statusBadge" class="text-[10px] px-2 py-1 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg font-mono">ONLINE</span>
     </header>
 
-    <!-- Page: Dashboard -->
-    <div id="pageDashboard" class="space-y-6">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder">
+    <!-- Navigation Tabs -->
+    <div class="flex bg-gray-900/80 p-1 rounded-xl border border-gray-800 gap-1 text-xs font-bold">
+      <button id="navMain" class="flex-1 py-2 rounded-lg bg-green-500/20 text-green-400 border border-green-500/40">Головна</button>
+      <button id="navExpenses" class="flex-1 py-2 rounded-lg text-gray-400 hover:text-white">Витрати</button>
+      <button id="navArchive" class="flex-1 py-2 rounded-lg text-gray-400 hover:text-white">Архів</button>
+    </div>
+
+    <!-- PAGE 1: MAIN DASHBOARD & PARSER -->
+    <div id="pageMain" class="space-y-4">
+      
+      <!-- Top KPIs -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-gray-900 p-3 rounded-2xl border border-gray-800">
           <span class="text-[10px] text-gray-400 uppercase font-bold">Виручка</span>
-          <p id="kpiRevenue" class="text-lg font-mono font-bold text-neonGreen">0 €</p>
+          <p id="kpiRevenue" class="text-xl font-mono font-bold text-green-400">0 €</p>
         </div>
-        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder">
-          <span class="text-[10px] text-gray-400 uppercase font-bold">Прибуток</span>
-          <p id="kpiNetProfit" class="text-lg font-mono font-bold text-neonBlue">0 €</p>
-        </div>
-        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder">
-          <span class="text-[10px] text-gray-400 uppercase font-bold">Готівка / Карта</span>
-          <p id="kpiCashCard" class="text-lg font-mono font-bold text-white">0 / 0 €</p>
-        </div>
-        <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder">
+        <div class="bg-gray-900 p-3 rounded-2xl border border-gray-800">
           <span class="text-[10px] text-gray-400 uppercase font-bold">Угод</span>
-          <p id="kpiDeals" class="text-lg font-mono font-bold text-white">0</p>
+          <p id="kpiDeals" class="text-xl font-mono font-bold text-white">0</p>
         </div>
       </div>
 
-      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-3">
-        <h2 class="text-xs font-bold uppercase text-gray-400">Ввід текстового логу</h2>
-        <textarea id="rawInput" rows="6" placeholder="Встав сюди журнал..." class="w-full bg-brandDark p-3 rounded-xl border border-brandBorder text-xs font-mono focus:border-neonGreen focus:outline-none text-white"></textarea>
-        <button onclick="processInput()" class="w-full py-2.5 bg-neonGreen/20 text-neonGreen border border-neonGreen/40 rounded-xl font-bold text-xs uppercase hover:bg-neonGreen/30 transition">
-          Обробити Журнал
+      <!-- Log Input Form -->
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-3">
+        <h2 class="text-xs font-bold uppercase text-gray-400">Ввід текстового логу (поточний блок)</h2>
+        <textarea id="rawInput" rows="6" placeholder="Встав сюди журнал..." class="w-full bg-black/50 p-3 rounded-xl border border-gray-800 text-xs font-mono focus:border-green-500 focus:outline-none text-white leading-relaxed">16.8 00:10
+валера слава
+1
+10
+16.8 16:00
+Ash Deyveyne
+1
+10</textarea>
+        
+        <button id="btnProcessLog" class="w-full py-3 bg-emerald-600/30 text-emerald-400 border border-emerald-500/50 rounded-xl font-bold text-xs uppercase hover:bg-emerald-600/40 active:scale-95 transition">
+          Обробити та зберегти в архів
         </button>
       </div>
 
-      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder space-y-3">
-        <h2 class="text-xs font-bold uppercase text-gray-400">Результати Обробки</h2>
+      <!-- Log Table -->
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-3">
+        <h2 class="text-xs font-bold uppercase text-gray-400">Розпарсені дані</h2>
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
+          <table class="w-full text-left text-xs">
             <thead>
-              <tr class="border-b border-brandBorder text-gray-400 text-[10px]">
-                <th class="p-2">Сорт</th><th class="p-2">Клієнт</th><th class="p-2">Вага</th><th class="p-2">Оплата</th><th class="p-2">Час</th>
+              <tr class="border-b border-gray-800 text-gray-500 text-[10px]">
+                <th class="pb-2">Час</th>
+                <th class="pb-2">Клієнт</th>
+                <th class="pb-2">К-сть</th>
+                <th class="pb-2">Сума</th>
               </tr>
             </thead>
-            <tbody id="recordsTableBody" class="divide-y divide-brandBorder font-mono"></tbody>
+            <tbody id="recordsTable" class="divide-y divide-gray-800/50 font-mono text-gray-300">
+              <tr><td colspan="4" class="py-3 text-center text-gray-600">Немає оброблених даних</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
+
     </div>
 
-    <!-- Page: Analytics -->
-    <div id="pageAnalytics" class="hidden space-y-6">
-      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder">
-        <h2 class="text-sm font-bold text-white">Архів та Статистика</h2>
-        <p class="text-xs text-gray-400 mt-2">Усі записи зберігаються локально в пам'яті вашого Telegram-акаунту.</p>
+    <!-- PAGE 2: EXPENSES (РОЗХОДИ) -->
+    <div id="pageExpenses" class="space-y-4 hidden">
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-bold uppercase text-purple-400">Категорія "Мої"</h2>
+          <span id="kpiBalance" class="text-sm font-mono font-bold text-white">0 €</span>
+        </div>
+
+        <div>
+          <span class="text-[10px] text-gray-400 uppercase font-bold block mb-2">Швидкий розхід:</span>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="quickExpense('Rewe')" class="py-2 bg-gray-800 hover:bg-gray-700 text-xs font-bold rounded-xl border border-gray-700">🛒 Rewe</button>
+            <button onclick="quickExpense('Restoran')" class="py-2 bg-gray-800 hover:bg-gray-700 text-xs font-bold rounded-xl border border-gray-700">🍕 Restoran</button>
+            <button onclick="quickExpense('Tabak')" class="py-2 bg-gray-800 hover:bg-gray-700 text-xs font-bold rounded-xl border border-gray-700">🚬 Tabak</button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <input id="expDesc" type="text" placeholder="Опис" class="w-full bg-black/50 p-2.5 rounded-xl border border-gray-800 text-xs text-white focus:outline-none focus:border-purple-500">
+          <input id="expAmount" type="number" placeholder="Сума €" class="w-full bg-black/50 p-2.5 rounded-xl border border-gray-800 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button id="btnAddIncome" class="py-2.5 bg-green-600/20 text-green-400 border border-green-500/40 rounded-xl font-bold text-xs uppercase hover:bg-green-600/30">+ Дохід</button>
+          <button id="btnAddExpense" class="py-2.5 bg-red-600/20 text-red-400 border border-red-500/40 rounded-xl font-bold text-xs uppercase hover:bg-red-600/30">- Розхід</button>
+        </div>
+      </div>
+
+      <!-- Expenses Log History -->
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-2">
+        <h3 class="text-xs font-bold uppercase text-gray-400">Історія операцій</h3>
+        <ul id="expenseHistory" class="space-y-2 text-xs font-mono">
+          <li class="text-gray-600 text-center py-2">Записи відсутні</li>
+        </ul>
       </div>
     </div>
 
-    <!-- Page: Forecast -->
-    <div id="pageForecast" class="hidden space-y-6">
-      <div class="bg-brandCard p-4 rounded-2xl border border-brandBorder">
-        <h2 class="text-sm font-bold text-white">Прогноз продажів</h2>
-        <p class="text-xs text-gray-400 mt-2">Модуль аналізу динаміки готовий до роботи.</p>
+    <!-- PAGE 3: ARCHIVE -->
+    <div id="pageArchive" class="space-y-4 hidden">
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+        <h2 class="text-xs font-bold uppercase text-gray-400 mb-2">Архів записів</h2>
+        <p class="text-xs text-gray-400">Усі дані зберігаються локально в пам'яті браузера/Telegram.</p>
       </div>
     </div>
 
   </div>
 
   <script>
-    // --- TELEGRAM AUTH ENGINE ---
-    let currentUser = null;
+    // GLOBAL STATE
+    let balance = 0;
+    let transactions = [];
 
-    function initTelegramUser() {
+    // 1. INITIALIZE USER REGISTRATION
+    function initUser() {
+      let user = null;
       try {
         if (window.Telegram && window.Telegram.WebApp) {
           window.Telegram.WebApp.ready();
           window.Telegram.WebApp.expand();
-
-          const tgUser = window.Telegram.WebApp.initDataUnsafe?.user;
-          if (tgUser && tgUser.id) {
-            currentUser = {
-              id: tgUser.id.toString(),
-              name: (tgUser.first_name + ' ' + (tgUser.last_name || '')).trim(),
-              username: tgUser.username ? '@' + tgUser.username : 'id:' + tgUser.id,
-              photo: tgUser.photo_url || ''
-            };
-          }
+          user = window.Telegram.WebApp.initDataUnsafe?.user;
         }
       } catch (e) {
-        console.warn('TG Init Error:', e);
+        console.warn("TG SDK Load Issue:", e);
       }
 
-      if (!currentUser) {
-        let devId = localStorage.getItem('hms_dev_user_id') || ('usr_' + Math.random().toString(36).substring(2, 7));
-        localStorage.setItem('hms_dev_user_id', devId);
-        currentUser = { id: devId, name: 'Користувач (TG)', username: '@' + devId, photo: '' };
-      }
+      const nameEl = document.getElementById('userName');
+      const handleEl = document.getElementById('userHandle');
+      const avatarEl = document.getElementById('userAvatar');
 
-      document.getElementById('userName').innerText = currentUser.name;
-      document.getElementById('userHandle').innerText = currentUser.username;
-      if (currentUser.photo) {
-        document.getElementById('userAvatar').innerHTML = `<img src="${currentUser.photo}" class="w-full h-full rounded-full">`;
+      if (user && (user.id || user.first_name)) {
+        const fullName = (user.first_name + ' ' + (user.last_name || '')).trim();
+        nameEl.innerText = fullName || 'Користувач TG';
+        handleEl.innerText = user.username ? '@' + user.username : 'ID: ' + user.id;
+        avatarEl.innerText = (fullName[0] || 'U').toUpperCase();
       } else {
-        document.getElementById('userAvatar').innerText = currentUser.name.charAt(0).toUpperCase();
+        // Fallback for standalone browser mode
+        let localId = localStorage.getItem('hms_user_id') || ('id_' + Math.floor(Math.random() * 899999 + 100000));
+        localStorage.setItem('hms_user_id', localId);
+        nameEl.innerText = 'Автономний Профіль';
+        handleEl.innerText = '@' + localId;
+        avatarEl.innerText = 'A';
       }
     }
 
-    // --- TAB NAVIGATION ---
-    function switchTab(tab) {
-      ['Dashboard', 'Analytics', 'Forecast'].forEach(t => {
-        document.getElementById('page' + t).classList.add('hidden');
-        document.getElementById('tab' + t).className = 'px-3 py-1.5 text-xs font-bold rounded-lg text-gray-400 hover:text-white';
+    // 2. NAVIGATION SYSTEM
+    function setupNavigation() {
+      const btnMain = document.getElementById('navMain');
+      const btnExpenses = document.getElementById('navExpenses');
+      const btnArchive = document.getElementById('navArchive');
+
+      const pageMain = document.getElementById('pageMain');
+      const pageExpenses = document.getElementById('pageExpenses');
+      const pageArchive = document.getElementById('pageArchive');
+
+      function resetTabs() {
+        [pageMain, pageExpenses, pageArchive].forEach(p => p.classList.add('hidden'));
+        [btnMain, btnExpenses, btnArchive].forEach(b => {
+          b.className = 'flex-1 py-2 rounded-lg text-gray-400 hover:text-white';
+        });
+      }
+
+      btnMain.addEventListener('click', () => {
+        resetTabs();
+        pageMain.classList.remove('hidden');
+        btnMain.className = 'flex-1 py-2 rounded-lg bg-green-500/20 text-green-400 border border-green-500/40';
       });
-      
-      const activeTabName = tab.charAt(0).toUpperCase() + tab.slice(1);
-      document.getElementById('page' + activeTabName).classList.remove('hidden');
-      document.getElementById('tab' + activeTabName).className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40';
+
+      btnExpenses.addEventListener('click', () => {
+        resetTabs();
+        pageExpenses.classList.remove('hidden');
+        btnExpenses.className = 'flex-1 py-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/40';
+      });
+
+      btnArchive.addEventListener('click', () => {
+        resetTabs();
+        pageArchive.classList.remove('hidden');
+        btnArchive.className = 'flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/40';
+      });
     }
 
-    // --- LOG PARSER ENGINE ---
-    function processInput() {
-      const text = document.getElementById('rawInput').value;
-      if (!text.trim()) return;
+    // 3. LOG PARSER
+    function parseLog() {
+      const rawText = document.getElementById('rawInput').value;
+      if (!rawText.trim()) return;
 
-      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
       let records = [];
-      let totalRev = 0, totalCash = 0, totalCard = 0;
+      let totalSum = 0;
 
-      for (let i = 0; i < lines.length; i += 4) {
-        if (lines[i] && lines[i+1] && lines[i+2]) {
-          let name = lines[i];
-          let weight = lines[i+1];
-          let moneyStr = lines[i+2];
-          let time = lines[i+3] || '--:--';
+      let i = 0;
+      while (i < lines.length) {
+        if (lines[i] && lines[i].match(/\d+\.\d+/)) {
+          let dateTime = lines[i];
+          let client = lines[i+1] || 'Невідомо';
+          let qty = lines[i+2] || '0';
+          let priceStr = lines[i+3] || '0';
 
-          let isCard = moneyStr.toLowerCase().includes('карта');
-          let val = parseFloat(moneyStr.replace(',', '.').replace(/[^0-9.]/g, '')) || 0;
+          let price = parseFloat(priceStr.replace(',', '.')) || 0;
+          totalSum += price;
 
-          totalRev += val;
-          if (isCard) totalCard += val; else totalCash += val;
-
-          records.push({ name, weight, val, isCard, time });
+          records.push({ dateTime, client, qty, price });
+          i += 4;
+        } else {
+          i++;
         }
       }
 
-      document.getElementById('kpiRevenue').innerText = totalRev + ' €';
-      document.getElementById('kpiCashCard').innerText = `${totalCash} / ${totalCard} €`;
-      document.getElementById('kpiNetProfit').innerText = (totalRev * 0.4).toFixed(1) + ' €';
+      document.getElementById('kpiRevenue').innerText = totalSum + ' €';
       document.getElementById('kpiDeals').innerText = records.length;
 
-      const tbody = document.getElementById('recordsTableBody');
+      const tbody = document.getElementById('recordsTable');
+      if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-3 text-center text-red-400">Формат не розпізнано</td></tr>';
+        return;
+      }
+
       tbody.innerHTML = records.map(r => `
-        <tr class="hover:bg-brandDark/50">
-          <td class="p-2 text-neonGreen font-bold">Основа</td>
-          <td class="p-2">${r.name}</td>
-          <td class="p-2">${r.weight}</td>
-          <td class="p-2 font-bold">${r.val} € ${r.isCard ? '💳' : '💵'}</td>
-          <td class="p-2 text-gray-400">${r.time}</td>
+        <tr>
+          <td class="py-2 text-gray-400 text-[11px]">${r.dateTime}</td>
+          <td class="py-2 text-white font-bold">${r.client}</td>
+          <td class="py-2 text-purple-400">${r.qty}</td>
+          <td class="py-2 text-green-400 font-bold">${r.price} €</td>
         </tr>
       `).join('');
     }
 
-    // START ON LOAD
+    // 4. EXPENSE SYSTEM
+    function addTransaction(type, desc, amount) {
+      if (!amount || amount <= 0) return;
+
+      if (type === 'income') {
+        balance += amount;
+      } else {
+        balance -= amount;
+      }
+
+      document.getElementById('kpiBalance').innerText = balance + ' €';
+
+      const historyEl = document.getElementById('expenseHistory');
+      if (transactions.length === 0) historyEl.innerHTML = '';
+
+      transactions.unshift({ type, desc, amount, time: new Date().toLocaleTimeString().slice(0, 5) });
+
+      historyEl.innerHTML = transactions.map(t => `
+        <li class="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-gray-800">
+          <span class="text-gray-300">${t.desc} <span class="text-[10px] text-gray-500">(${t.time})</span></span>
+          <span class="font-bold ${t.type === 'income' ? 'text-green-400' : 'text-red-400'}">
+            ${t.type === 'income' ? '+' : '-'}${t.amount} €
+          </span>
+        </li>
+      `).join('');
+    }
+
+    function quickExpense(category) {
+      document.getElementById('expDesc').value = category;
+    }
+
+    // ATTACH EVENT LISTENERS ON DOM LOAD
     window.addEventListener('DOMContentLoaded', () => {
-      initTelegramUser();
+      initUser();
+      setupNavigation();
+
+      document.getElementById('btnProcessLog').addEventListener('click', parseLog);
+
+      document.getElementById('btnAddIncome').addEventListener('click', () => {
+        const desc = document.getElementById('expDesc').value || 'Дохід';
+        const amount = parseFloat(document.getElementById('expAmount').value);
+        addTransaction('income', desc, amount);
+        document.getElementById('expAmount').value = '';
+      });
+
+      document.getElementById('btnAddExpense').addEventListener('click', () => {
+        const desc = document.getElementById('expDesc').value || 'Витрата';
+        const amount = parseFloat(document.getElementById('expAmount').value);
+        addTransaction('expense', desc, amount);
+        document.getElementById('expAmount').value = '';
+      });
     });
   </script>
 </body>
