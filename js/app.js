@@ -1,3 +1,7 @@
+/**
+ * HMS2.0 - Core Application Controller
+ */
+
 import { parseLogs } from './parser.js';
 import { 
   setCurrentUserId, 
@@ -33,108 +37,83 @@ let chartRevenueInstance = null;
 let chartWeightInstance = null;
 let chartBubbleInstance = null;
 
-// Головна точка входу — гарантуємо прив'язку кнопок за будь-яких умов
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('[HMS2.0] Ініціалізація додатку...');
+const categoryColorMap = {};
+function getCategoryColor(categoryName) {
+  if (!categoryName) categoryName = 'UNCATEGORIZED';
+  if (!categoryColorMap[categoryName]) {
+    let hash = 0;
+    for (let i = 0; i < categoryName.length; i++) {
+      hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    categoryColorMap[categoryName] = {
+      bg: `hsla(${hue}, 85%, 60%, 0.15)`,
+      border: `hsla(${hue}, 85%, 60%, 0.5)`,
+      text: `hsl(${hue}, 90%, 65%)`
+    };
+  }
+  return categoryColorMap[categoryName];
+}
 
-  // 1. Авторизація
+document.addEventListener('DOMContentLoaded', () => {
   try {
-    currentUser = getTelegramUser();
-    setCurrentUserId(currentUser?.id || 'dev_user');
-    initUserUI();
+    initNavigation();
+    initQuickButtons();
+    initMyExpensesEvents();
   } catch (err) {
-    console.warn('[HMS2.0] Помилка Telegram Auth, використовуємо Dev-режим:', err);
-    setCurrentUserId('dev_user');
+    console.error('[HMS2.0 Navigation Error]', err);
   }
 
-  // 2. Завантаження даних
+  try {
+    initUserSession();
+  } catch (err) {
+    console.error('[HMS2.0 User Session Error]', err);
+  }
+
   try {
     purchases = loadPurchases() || {};
     myExpenses = loadMyExpenses() || [];
     globalArchiveRecords = loadGlobalArchive() || [];
 
     const rawInputEl = document.getElementById('rawInput');
-    if (rawInputEl) rawInputEl.value = loadRawLogs() || '';
+    if (rawInputEl) {
+      rawInputEl.value = loadRawLogs() || '';
+    }
   } catch (err) {
-    console.error('[HMS2.0] Помилка зчитування LocalStorage:', err);
+    console.error('[HMS2.0 Storage Load Error]', err);
   }
 
-  // 3. БЕЗПЕЧНА ПРИВ'ЯЗКА ПОДІЙ ТА КНОПОК (не впаде, якщо якогось елемента немає)
-  bindNavigation();
-  bindButtons();
-  bindQuickExpenseButtons();
-  bindMyExpensesEvents();
-
-  // 4. Первинний розрахунок
   try {
     processCurrentInput();
   } catch (err) {
-    console.error('[HMS2.0] Помилка первинного обчислення:', err);
+    console.error('[HMS2.0 Processing Error]', err);
   }
+
+  bindGlobalEvents();
 });
 
-function initUserUI() {
-  const userNameEl = document.getElementById('userName');
-  const userHandleEl = document.getElementById('userHandle');
-  const userAvatarEl = document.getElementById('userAvatar');
+function bindGlobalEvents() {
+  const btnCalc = document.getElementById('btnCalculate');
+  if (btnCalc) btnCalc.addEventListener('click', processCurrentInput);
 
-  if (userNameEl) userNameEl.innerText = `${currentUser?.firstName || 'Dev'} ${currentUser?.lastName || ''}`.trim();
-  if (userHandleEl) userHandleEl.innerText = currentUser?.username || `@id_${currentUser?.id || 'local'}`;
-  if (userAvatarEl && currentUser?.firstName) userAvatarEl.innerText = currentUser.firstName.charAt(0).toUpperCase();
-}
+  const btnAddPur = document.getElementById('btnAddPurchase');
+  if (btnAddPur) btnAddPur.addEventListener('click', handleAddPurchase);
 
-// Перемикання вкладок
-function bindNavigation() {
-  const tabs = [
-    { btnId: 'tabDashboard', pageId: 'pageDashboard' },
-    { btnId: 'tabAnalytics', pageId: 'pageAnalytics', onOpen: renderAnalyticsPage },
-    { btnId: 'tabForecast', pageId: 'pageForecast', onOpen: renderForecastPage }
-  ];
-
-  tabs.forEach(t => {
-    const btn = document.getElementById(t.btnId);
-    if (!btn) return;
-
-    btn.addEventListener('click', () => {
-      tabs.forEach(item => {
-        const p = document.getElementById(item.pageId);
-        const b = document.getElementById(item.btnId);
-        if (p) p.classList.add('hidden');
-        if (b) b.className = 'px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
-      });
-
-      const activePage = document.getElementById(t.pageId);
-      if (activePage) activePage.classList.remove('hidden');
-      btn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-
-      if (t.onOpen) t.onOpen();
+  const btnClearArch = document.getElementById('btnClearArchive');
+  if (btnClearArch) {
+    btnClearArch.addEventListener('click', () => {
+      if (confirm('Дійсно очистити весь глобальний архів?')) {
+        clearGlobalArchive();
+        globalArchiveRecords = [];
+        processCurrentInput();
+      }
     });
-  });
-}
+  }
 
-// Прив'язка основних дій
-function bindButtons() {
-  const safeClick = (id, handler) => {
-    const el = document.getElementById(id);
-    if (el) {
-      // Видаляємо старі обробники, щоб не дублювати
-      el.replaceWith(el.cloneNode(true));
-      document.getElementById(id).addEventListener('click', handler);
-    }
-  };
-
-  safeClick('btnCalculate', processCurrentInput);
-  safeClick('btnAddPurchase', handleAddPurchase);
-
-  safeClick('btnClearArchive', () => {
-    if (confirm('Дійсно очистити весь глобальний архів?')) {
-      clearGlobalArchive();
-      globalArchiveRecords = [];
-      processCurrentInput();
-    }
-  });
-
-  safeClick('btnExportTxt', () => exportArchiveToTxt(globalArchiveRecords, currentPeriod));
+  const btnExport = document.getElementById('btnExportTxt');
+  if (btnExport) {
+    btnExport.addEventListener('click', () => exportArchiveToTxt(globalArchiveRecords, currentPeriod));
+  }
 
   document.querySelectorAll('.btn-period').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -148,10 +127,62 @@ function bindButtons() {
   });
 }
 
-function bindQuickExpenseButtons() {
+function initUserSession() {
+  currentUser = getTelegramUser();
+  setCurrentUserId(currentUser.id);
+
+  const userNameEl = document.getElementById('userName');
+  const userHandleEl = document.getElementById('userHandle');
+  const userAvatarEl = document.getElementById('userAvatar');
+
+  if (userNameEl) userNameEl.innerText = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Користувач';
+  if (userHandleEl) userHandleEl.innerText = currentUser.username || `id: ${currentUser.id}`;
+
+  if (userAvatarEl) {
+    if (currentUser.photoUrl) {
+      userAvatarEl.innerHTML = `<img src="${currentUser.photoUrl}" class="w-full h-full rounded-full object-cover">`;
+    } else {
+      const initial = (currentUser.firstName && currentUser.firstName.charAt(0)) ? currentUser.firstName.charAt(0).toUpperCase() : 'U';
+      userAvatarEl.innerText = initial;
+    }
+  }
+}
+
+function initNavigation() {
+  const tabs = {
+    dashboard: { tab: document.getElementById('tabDashboard'), page: document.getElementById('pageDashboard') },
+    analytics: { tab: document.getElementById('tabAnalytics'), page: document.getElementById('pageAnalytics') },
+    forecast: { tab: document.getElementById('tabForecast'), page: document.getElementById('pageForecast') }
+  };
+
+  const activeClass = 'px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+  const inactiveClass = 'px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
+
+  const switchTab = (targetKey) => {
+    Object.keys(tabs).forEach(key => {
+      if (!tabs[key].tab || !tabs[key].page) return;
+      if (key === targetKey) {
+        tabs[key].page.classList.remove('hidden');
+        tabs[key].tab.className = activeClass;
+      } else {
+        tabs[key].page.classList.add('hidden');
+        tabs[key].tab.className = inactiveClass;
+      }
+    });
+
+    if (targetKey === 'analytics') renderAnalyticsPage();
+    if (targetKey === 'forecast') renderForecastPage();
+  };
+
+  if (tabs.dashboard.tab) tabs.dashboard.tab.addEventListener('click', () => switchTab('dashboard'));
+  if (tabs.analytics.tab) tabs.analytics.tab.addEventListener('click', () => switchTab('analytics'));
+  if (tabs.forecast.tab) tabs.forecast.tab.addEventListener('click', () => switchTab('forecast'));
+}
+
+function initQuickButtons() {
   document.querySelectorAll('.btn-quick-expense').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const name = e.target.getAttribute('data-name') || e.target.innerText.trim();
+      const name = e.target.getAttribute('data-name') || e.target.innerText.replace(/[^a-zA-Z]/g, '').trim();
       const noteInput = document.getElementById('myExpenseNote');
       const amountInput = document.getElementById('myExpenseAmount');
       if (noteInput) noteInput.value = name;
@@ -160,12 +191,11 @@ function bindQuickExpenseButtons() {
   });
 }
 
-function bindMyExpensesEvents() {
+function initMyExpensesEvents() {
   const btnInc = document.getElementById('btnAddIncome');
   const btnExp = document.getElementById('btnAddExpense');
-
-  if (btnInc) btnInc.onclick = () => addMyExpenseItem('income');
-  if (btnExp) btnExp.onclick = () => addMyExpenseItem('expense');
+  if (btnInc) btnInc.addEventListener('click', () => addMyExpenseItem('income'));
+  if (btnExp) btnExp.addEventListener('click', () => addMyExpenseItem('expense'));
 }
 
 function addMyExpenseItem(type) {
@@ -216,12 +246,12 @@ function renderMyExpensesList() {
   if (disp) disp.innerText = `${totalCustom.toFixed(1)} €`;
 
   document.querySelectorAll('.btn-del-expense').forEach(btn => {
-    btn.onclick = (e) => {
+    btn.addEventListener('click', (e) => {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
       myExpenses.splice(idx, 1);
       saveMyExpenses(myExpenses);
       processCurrentInput();
-    };
+    });
   });
 }
 
@@ -254,6 +284,7 @@ function processCurrentInput() {
   let totalExactWeight = 0;
   let totalBonusWeight = 0;
   let totalBonusCost = 0;
+
   let totalNewDebts = 0;
   let totalRepaidDebts = 0;
 
@@ -261,8 +292,11 @@ function processCurrentInput() {
 
   currentRecordsBatch.forEach(r => {
     totalRevenue += r.eurPaid || 0;
-    if (r.isCard) totalCard += r.eurPaid || 0;
-    else totalCash += r.eurPaid || 0;
+    if (r.isCard) {
+      totalCard += r.eurPaid || 0;
+    } else {
+      totalCash += r.eurPaid || 0;
+    }
 
     totalExactWeight += r.exactGramm || 0;
     totalBonusWeight += r.bonusGramm || 0;
@@ -281,7 +315,9 @@ function processCurrentInput() {
     totalRepaidDebts += r.debtRepaid || 0;
 
     const cName = r.clientName || 'Невідомий';
-    if (!clientDebtsMap[cName]) clientDebtsMap[cName] = { newDebt: 0, repaidDebt: 0 };
+    if (!clientDebtsMap[cName]) {
+      clientDebtsMap[cName] = { newDebt: 0, repaidDebt: 0 };
+    }
     clientDebtsMap[cName].newDebt += r.debtNew || 0;
     clientDebtsMap[cName].repaidDebt += r.debtRepaid || 0;
   });
@@ -309,6 +345,7 @@ function processCurrentInput() {
   setTxt('kpiFactReceived', `${factReceived.toFixed(1)} €`);
   setTxt('kpiNetProfit', `${netProfit.toFixed(1)} €`);
   setTxt('kpiFactNetProfit', `${factNetProfit.toFixed(1)} €`);
+
   setTxt('kpiCashCard', `${totalCash.toFixed(0)} / ${totalCard.toFixed(0)} €`);
   setTxt('kpiCostOfGoods', `${totalCostOfGoods.toFixed(1)} €`);
   setTxt('kpiActiveDebt', `${totalActiveDebt.toFixed(1)} €`);
@@ -323,6 +360,16 @@ function processCurrentInput() {
   renderMyExpensesList();
   renderDebts(clientDebtsMap);
   renderCurrentTable(currentRecordsBatch);
+
+  const pageAnalytics = document.getElementById('pageAnalytics');
+  if (pageAnalytics && !pageAnalytics.classList.contains('hidden')) {
+    renderAnalyticsPage();
+  }
+
+  const pageForecast = document.getElementById('pageForecast');
+  if (pageForecast && !pageForecast.classList.contains('hidden')) {
+    renderForecastPage();
+  }
 }
 
 function renderForecastPage() {
@@ -427,18 +474,21 @@ function renderCurrentTable(records) {
   const tbody = document.getElementById('recordsTableBody');
   if (!tbody) return;
 
-  tbody.innerHTML = records.map(r => `
-    <tr class="hover:bg-brandDark/40 transition">
-      <td class="p-2 font-bold text-neonGreen">${r.category}</td>
-      <td class="p-2 text-gray-200">${r.clientName}</td>
-      <td class="p-2 font-mono">${r.baseGramm} ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
-      <td class="p-2 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
-      <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
-      <td class="p-2 font-bold">${r.eurPaid} €</td>
-      <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
-      <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = records.map(r => {
+    const color = getCategoryColor(r.category);
+    return `
+      <tr class="hover:bg-brandDark/40 transition">
+        <td class="p-2 font-bold" style="color: ${color.text}">${r.category}</td>
+        <td class="p-2 text-gray-200">${r.clientName}</td>
+        <td class="p-2 font-mono">${r.baseGramm} ${r.bonusGramm > 0 ? `<span class="text-neonPurple">+!${r.bonusGramm}б</span>` : ''}</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
+        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
+        <td class="p-2 font-bold">${r.eurPaid} €</td>
+        <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
+        <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function renderAnalyticsPage() {
@@ -446,7 +496,15 @@ function renderAnalyticsPage() {
   if (archiveTotalCountEl) archiveTotalCountEl.innerText = globalArchiveRecords.length;
 
   const filtered = filterRecordsByPeriod(globalArchiveRecords, currentPeriod) || [];
-  renderArchiveTable(filtered);
+
+  const sortedArchive = [...filtered].sort((a, b) => {
+    if (a.category !== b.category) {
+      return (a.category || '').localeCompare(b.category || '');
+    }
+    return safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj);
+  });
+
+  renderArchiveTable(sortedArchive);
   renderHeatmap();
 
   if (typeof Chart === 'undefined') return;
@@ -465,31 +523,103 @@ function renderAnalyticsPage() {
   const canvasB = document.getElementById('chartBubbleDeals');
 
   if (canvasR) {
-    chartRevenueInstance = new Chart(canvasR.getContext('2d'), {
+    const ctxR = canvasR.getContext('2d');
+    chartRevenueInstance = new Chart(ctxR, {
       type: 'line',
-      data: { labels, datasets: [{ label: 'Виручка (€)', data: revenues, borderColor: '#00FF88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true }] },
-      options: { responsive: true, maintainAspectRatio: false }
+      data: {
+        labels,
+        datasets: [{
+          label: 'Виручка (€)',
+          data: revenues,
+          borderColor: '#00FF88',
+          backgroundColor: 'rgba(0,255,136,0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
+        }
+      }
     });
   }
 
   if (canvasW) {
-    chartWeightInstance = new Chart(canvasW.getContext('2d'), {
+    const ctxW = canvasW.getContext('2d');
+    chartWeightInstance = new Chart(ctxW, {
       type: 'bar',
-      data: { labels, datasets: [{ label: 'Точна вага (г)', data: weights, backgroundColor: '#9D00FF' }] },
-      options: { responsive: true, maintainAspectRatio: false }
+      data: {
+        labels,
+        datasets: [{
+          label: 'Точна вага (г)',
+          data: weights,
+          backgroundColor: '#9D00FF'
+        }]
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
+        }
+      }
     });
   }
 
   if (canvasB) {
-    const bubbleData = filtered.map(r => {
-      const d = safeParseDate(r.parsedDateObj);
-      return { x: d.getHours(), y: r.eurPaid || 0, r: Math.min(Math.max((r.exactGramm || 0) * 1.2, 3), 20) };
-    });
+    const ctxB = canvasB.getContext('2d');
+    
+    const bubbleData = filtered
+      .map(r => {
+        const d = safeParseDate(r.parsedDateObj);
+        const hours = d.getHours() + (d.getMinutes() / 60);
+        const money = r.eurPaid || 0;
+        const weight = r.exactGramm || 0;
 
-    chartBubbleInstance = new Chart(canvasB.getContext('2d'), {
+        const radius = Math.min(Math.max(weight * 1.2, 3), 20);
+
+        return { x: parseFloat(hours.toFixed(2)), y: money, r: radius };
+      })
+      .filter(item => !isNaN(item.x) && !isNaN(item.y));
+
+    chartBubbleInstance = new Chart(ctxB, {
       type: 'bubble',
-      data: { datasets: [{ label: 'Угоди', data: bubbleData, backgroundColor: 'rgba(0, 240, 255, 0.4)' }] },
-      options: { responsive: true, maintainAspectRatio: false }
+      data: {
+        datasets: [{
+          label: 'Угоди (X: Година, Y: Оплата €, R: Вага)',
+          data: bubbleData,
+          backgroundColor: 'rgba(0, 240, 255, 0.4)',
+          borderColor: '#00F0FF',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { 
+            title: { display: true, text: 'Година доби (0-24h)', color: '#9ca3af' }, 
+            min: 0, 
+            max: 24,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          },
+          y: { 
+            title: { display: true, text: 'Сума (€)', color: '#9ca3af' }, 
+            beginAtZero: true,
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#1f2937' }
+          }
+        }
+      }
     });
   }
 }
@@ -503,21 +633,46 @@ function renderHeatmap() {
   const { matrix, maxVal } = calculateWeeklyHeatmap(globalArchiveRecords, monthVal);
 
   const dayLabels = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1"><div></div>`;
-  for (let h = 0; h < 24; h++) html += `<div>${h}h</div>`;
+  
+  let html = `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center font-bold text-gray-400 text-center mb-1">`;
+  html += `<div></div>`;
+  for (let h = 0; h < 24; h++) {
+    html += `<div>${h}h</div>`;
+  }
   html += `</div>`;
 
   dayLabels.forEach((dayName, dayIdx) => {
-    html += `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center"><div class="text-gray-300 font-bold text-right pr-2">${dayName}</div>`;
+    html += `<div class="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center">`;
+    html += `<div class="text-gray-300 font-bold text-right pr-2">${dayName}</div>`;
+
     for (let h = 0; h < 24; h++) {
       const val = matrix[dayIdx][h];
-      const alpha = val > 0 ? Math.max(maxVal > 0 ? val / maxVal : 0, 0.15).toFixed(2) : 0.03;
-      html += `<div class="h-7 rounded flex items-center justify-center text-[9px]" style="background-color: rgba(0, 255, 136, ${alpha});">${val > 0 ? Math.round(val) : ''}</div>`;
+      const intensity = maxVal > 0 ? (val / maxVal) : 0;
+      const alpha = val > 0 ? Math.max(intensity, 0.15).toFixed(2) : 0.03;
+      
+      const bgColor = val > 0 
+        ? `rgba(0, 255, 136, ${alpha})` 
+        : `rgba(31, 41, 55, 0.3)`;
+
+      const textColor = intensity > 0.5 ? '#000' : '#fff';
+
+      html += `
+        <div class="h-7 rounded flex items-center justify-center text-[9px] transition hover:scale-110 cursor-pointer border border-brandBorder/30"
+             style="background-color: ${bgColor}; color: ${textColor};"
+             title="${dayName}, ${h}:00 - Виручка: ${val.toFixed(1)} €">
+          ${val > 0 ? `${Math.round(val)}` : ''}
+        </div>
+      `;
     }
     html += `</div>`;
   });
 
   container.innerHTML = html;
+
+  if (selectEl && !selectEl.dataset.initialized) {
+    selectEl.addEventListener('change', () => renderHeatmap());
+    selectEl.dataset.initialized = 'true';
+  }
 }
 
 function renderArchiveTable(records) {
@@ -529,16 +684,23 @@ function renderArchiveTable(records) {
     return;
   }
 
-  tbody.innerHTML = records.map(r => `
-    <tr class="hover:bg-brandDark/40 transition border-b border-brandBorder/50">
-      <td class="p-2 font-bold text-neonGreen">${r.category}</td>
-      <td class="p-2 text-gray-200">${r.clientName}</td>
-      <td class="p-2 font-mono">${r.rawGramm}</td>
-      <td class="p-2 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
-      <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
-      <td class="p-2 font-bold">${r.eurPaid} €</td>
-      <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
-      <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = records.map(r => {
+    const color = getCategoryColor(r.category);
+    return `
+      <tr class="hover:bg-brandDark/40 transition border-b border-brandBorder/50">
+        <td class="p-2 font-bold" style="color: ${color.text}">
+          <span class="px-2 py-0.5 rounded text-[10px]" style="background: ${color.bg}; border: 1px solid ${color.border}">
+            ${r.category}
+          </span>
+        </td>
+        <td class="p-2 text-gray-200">${r.clientName}</td>
+        <td class="p-2 font-mono">${r.rawGramm}</td>
+        <td class="p-2 font-mono font-bold text-neonGreen">${(r.exactGramm || 0).toFixed(2)}г</td>
+        <td class="p-2">${r.isCard ? '<span class="text-neonBlue font-bold">💳 Карта</span>' : '💵 Готівка'}</td>
+        <td class="p-2 font-bold">${r.eurPaid} €</td>
+        <td class="p-2 text-neonYellow">${r.rawDebtText || '-'}</td>
+        <td class="p-2 text-gray-400 text-[10px]">${r.timeStr}</td>
+      </tr>
+    `;
+  }).join('');
 }
