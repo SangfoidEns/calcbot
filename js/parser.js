@@ -72,13 +72,13 @@ export function parseRecordDateTime(timeStr) {
   parts.forEach(p => {
     if (p.includes(':')) {
       const hm = p.split(':');
-      hour = parseInt(hm[0], 10) || 0;
-      minute = parseInt(hm[1], 10) || 0;
+      if (hm[0] !== undefined) hour = parseInt(hm[0], 10) || 0;
+      if (hm[1] !== undefined) minute = parseInt(hm[1], 10) || 0;
     } else if (p.includes('.')) {
       const dmp = p.split('.');
-      if (dmp[0]) day = parseInt(dmp[0], 10);
-      if (dmp[1]) month = parseInt(dmp[1], 10) - 1;
-      if (dmp[2]) {
+      if (dmp[0] && !isNaN(parseInt(dmp[0], 10))) day = parseInt(dmp[0], 10);
+      if (dmp[1] && !isNaN(parseInt(dmp[1], 10))) month = parseInt(dmp[1], 10) - 1;
+      if (dmp[2] && !isNaN(parseInt(dmp[2], 10))) {
         let y = parseInt(dmp[2], 10);
         year = y < 100 ? 2000 + y : y;
       }
@@ -109,12 +109,13 @@ export function parseLogs(rawText) {
   while (i < lines.length) {
     const line = lines[i];
 
+    // Перевірка заголовка структури
     if (i + 3 < lines.length && 
         lines[i+1].toLowerCase() === 'name' && 
         lines[i+2].toLowerCase() === 'gramm' && 
         lines[i+3] === '€') {
       currentCategory = line.toUpperCase();
-      i += 5;
+      i += 4; // Виправлено зсув
       continue;
     }
 
@@ -124,7 +125,7 @@ export function parseLogs(rawText) {
       const rawMoney = lines[i+2];
       const timeStr = lines[i+3];
 
-      if (timeStr.includes(':') || timeStr.includes('.')) {
+      if (timeStr && (timeStr.includes(':') || timeStr.includes('.'))) {
         const weightData = parseWeightAndBonus(rawGramm);
         const moneyData = parseMoneyAndPaymentType(rawMoney);
         const parsedDateObj = parseRecordDateTime(timeStr);
