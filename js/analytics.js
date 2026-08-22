@@ -1,3 +1,7 @@
+/**
+ * HMS2.0 - Analytics Engine
+ */
+
 export function safeParseDate(dateStr) {
   if (!dateStr) return new Date();
   const d = new Date(dateStr);
