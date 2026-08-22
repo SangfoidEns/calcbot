@@ -753,6 +753,196 @@
   </div>
 
   <script>
+    // ============================================================
+    // TELEGRAM SERVICE (покращена інтеграція Mini App)
+    // ============================================================
+    const TelegramService = (() => {
+      let tg = null;
+      let isRealTelegram = false;
+
+      function init() {
+        if (!window.Telegram || !window.Telegram.WebApp) {
+          console.log('[TG] Not running inside Telegram WebApp');
+          return false;
+        }
+
+        tg = window.Telegram.WebApp;
+        isRealTelegram = true;
+
+        // 1. Базова ініціалізація
+        tg.ready();
+        tg.expand();
+
+        // 2. Вимкнути випадкове закриття свайпом (Bot API 7.7+)
+        try {
+          if (tg.isVersionAtLeast && tg.isVersionAtLeast('7.7')) {
+            tg.disableVerticalSwipes();
+          }
+        } catch (e) {}
+
+        // 3. Тема Telegram
+        applyTheme();
+        tg.onEvent('themeChanged', applyTheme);
+
+        // 4. Кольори шапки і фону
+        try {
+          tg.setHeaderColor('bg_color');
+          if (tg.themeParams && tg.themeParams.bg_color) {
+            tg.setBackgroundColor(tg.themeParams.bg_color);
+          }
+        } catch (e) {}
+
+        // 5. Підтвердження при закритті (щоб не втратити дані)
+        try {
+          tg.enableClosingConfirmation();
+        } catch (e) {}
+
+        // 6. Головна кнопка Telegram
+        setupMainButton();
+
+        return true;
+      }
+
+      function applyTheme() {
+        if (!tg) return;
+        const tp = tg.themeParams || {};
+        const root = document.documentElement;
+
+        if (tp.bg_color) root.style.setProperty('--tg-theme-bg-color', tp.bg_color);
+        if (tp.text_color) root.style.setProperty('--tg-theme-text-color', tp.text_color);
+        if (tp.button_color) root.style.setProperty('--tg-theme-button-color', tp.button_color);
+        if (tp.hint_color) root.style.setProperty('--tg-theme-hint-color', tp.hint_color);
+        if (tp.secondary_bg_color) root.style.setProperty('--tg-theme-secondary-bg-color', tp.secondary_bg_color);
+      }
+
+      function setupMainButton() {
+        if (!tg || !tg.MainButton) return;
+
+        tg.MainButton.setText('ОНОВИТИ / РОЗРАХУВАТИ');
+        tg.MainButton.color = '#00FF88';
+        tg.MainButton.textColor = '#000000';
+        tg.MainButton.show();
+        tg.MainButton.enable();
+
+        tg.MainButton.onClick(() => {
+          haptic('medium');
+          processData();
+        });
+      }
+
+      function haptic(type = 'light') {
+        if (!tg || !tg.HapticFeedback) return;
+        try {
+          if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+          else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+          else if (type === 'warning') tg.HapticFeedback.notificationOccurred('warning');
+          else if (type === 'medium') tg.HapticFeedback.impactOccurred('medium');
+          else if (type === 'heavy') tg.HapticFeedback.impactOccurred('heavy');
+          else tg.HapticFeedback.impactOccurred('light');
+        } catch (e) {}
+      }
+
+      function getUser() {
+        if (!tg) return null;
+        // Увага: initDataUnsafe можна підробити.
+        // Для серйозної логіки потрібен бекенд + валідація initData.
+        return tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+      }
+
+      function getInitData() {
+        // Сирий рядок — його треба відправляти на бекенд для HMAC-перевірки
+        return tg ? tg.initData : '';
+      }
+
+      function isInsideTelegram() {
+        return isRealTelegram;
+      }
+
+      function showAlert(message) {
+        if (tg && tg.showAlert) tg.showAlert(message);
+        else alert(message);
+      }
+
+      function showConfirm(message, callback) {
+        if (tg && tg.showConfirm) tg.showConfirm(message, callback);
+        else callback(confirm(message));
+      }
+
+      // ---------- CloudStorage helpers ----------
+      // Telegram CloudStorage: ключ-значення, ліміт ~1 МБ на ключ
+      function cloudSet(key, value, callback) {
+        if (!tg || !tg.CloudStorage) {
+          if (callback) callback(false);
+          return;
+        }
+        try {
+          const str = typeof value === 'string' ? value : JSON.stringify(value);
+          tg.CloudStorage.setItem(key, str, (err, ok) => {
+            if (err) console.warn('[CloudStorage] set error:', err);
+            if (callback) callback(!err && ok);
+          });
+        } catch (e) {
+          console.warn('[CloudStorage] set exception:', e);
+          if (callback) callback(false);
+        }
+      }
+
+      function cloudGet(key, callback) {
+        if (!tg || !tg.CloudStorage) {
+          if (callback) callback(null);
+          return;
+        }
+        try {
+          tg.CloudStorage.getItem(key, (err, value) => {
+            if (err || value === null || value === undefined || value === '') {
+              if (callback) callback(null);
+              return;
+            }
+            try {
+              const parsed = JSON.parse(value);
+              if (callback) callback(parsed);
+            } catch (_) {
+              if (callback) callback(value);
+            }
+          });
+        } catch (e) {
+          console.warn('[CloudStorage] get exception:', e);
+          if (callback) callback(null);
+        }
+      }
+
+      function cloudRemove(key, callback) {
+        if (!tg || !tg.CloudStorage) {
+          if (callback) callback(false);
+          return;
+        }
+        try {
+          tg.CloudStorage.removeItem(key, (err, ok) => {
+            if (callback) callback(!err && ok);
+          });
+        } catch (e) {
+          if (callback) callback(false);
+        }
+      }
+
+      return {
+        init,
+        getUser,
+        getInitData,
+        isInsideTelegram,
+        haptic,
+        showAlert,
+        showConfirm,
+        applyTheme,
+        cloudSet,
+        cloudGet,
+        cloudRemove
+      };
+    })();
+
+    // ============================================================
+    // GLOBAL STATE
+    // ============================================================
     let barChart, pieChart;
     let archTimeChart, archComparisonChart, archProfitChart, archBuyersChart;
     let fcComparisonChart, fcVarietyDemandChart;
@@ -810,6 +1000,7 @@
     }
 
     function loadGlobalVarieties() {
+      // 1. Спочатку швидко з localStorage
       const savedVarieties = localStorage.getItem('h2_global_cost_per_100g');
       if (savedVarieties) {
         try {
@@ -824,10 +1015,27 @@
         } catch(e) { console.error('Error loading global varieties', e); }
       }
       populateVarietyDropdown();
+
+      // 2. Потім підтягуємо з CloudStorage (якщо є новіші дані)
+      if (typeof TelegramService !== 'undefined' && TelegramService.isInsideTelegram()) {
+        TelegramService.cloudGet('h2_varieties', (cloudData) => {
+          if (cloudData && typeof cloudData === 'object') {
+            Object.keys(cloudData).forEach(k => {
+              GLOBAL_VARIETIES[k] = cloudData[k];
+            });
+            localStorage.setItem('h2_global_cost_per_100g', JSON.stringify(GLOBAL_VARIETIES));
+            populateVarietyDropdown();
+          }
+        });
+      }
     }
 
     function saveGlobalVarieties() {
       localStorage.setItem('h2_global_cost_per_100g', JSON.stringify(GLOBAL_VARIETIES));
+      // Синхронізуємо в Telegram Cloud
+      if (typeof TelegramService !== 'undefined' && TelegramService.isInsideTelegram()) {
+        TelegramService.cloudSet('h2_varieties', GLOBAL_VARIETIES);
+      }
     }
 
     function populateVarietyDropdown(selectedVal = null) {
@@ -880,31 +1088,52 @@
     }
 
     function initTelegramAuth() {
-      if (window.Telegram && window.Telegram.WebApp) {
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+      const success = TelegramService.init();
 
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-          telegramUser = tg.initDataUnsafe.user;
-          currentUser = `tg_${telegramUser.id}`;
-          updateTgBadgeUI(`${telegramUser.first_name || ''} (@${telegramUser.username || telegramUser.id})`);
+      if (success) {
+        const user = TelegramService.getUser();
+        if (user) {
+          telegramUser = user;
+          currentUser = `tg_${user.id}`;
+
+          const name = user.first_name || '';
+          const username = user.username ? `@${user.username}` : `ID ${user.id}`;
+          updateTgBadgeUI(`${name} ${username}`.trim());
+
+          // Ховаємо кнопку «Змінити» — ми всередині Telegram
+          const changeBtn = document.querySelector('#tgUserBadge button');
+          if (changeBtn) changeBtn.style.display = 'none';
+
+          // Невеликий haptic при успішному вході
+          TelegramService.haptic('light');
         } else {
+          // Telegram є, але юзера немає (рідко)
           const savedTgUser = localStorage.getItem('h2_tg_user_session');
           if (savedTgUser) {
-            telegramUser = JSON.parse(savedTgUser);
-            currentUser = `tg_${telegramUser.id}`;
-            updateTgBadgeUI(`${telegramUser.name} (@${telegramUser.id})`);
+            try {
+              telegramUser = JSON.parse(savedTgUser);
+              currentUser = `tg_${telegramUser.id}`;
+              updateTgBadgeUI(`${telegramUser.name || telegramUser.id}`);
+            } catch (e) {
+              loginWithTelegramPrompt();
+            }
           } else {
             loginWithTelegramPrompt();
           }
         }
       } else {
+        // Відкрито в звичайному браузері
         loginWithTelegramPrompt();
       }
     }
 
     function loginWithTelegramPrompt() {
+      // Якщо ми всередині Telegram — не дозволяємо міняти юзера вручну
+      if (TelegramService.isInsideTelegram()) {
+        TelegramService.showAlert('Ви вже авторизовані через Telegram');
+        return;
+      }
+
       const username = prompt('Введіть ваш Telegram Username або ID:', 'Alesha_TG');
       if (username) {
         const cleanName = username.replace('@', '').trim();
@@ -1055,6 +1284,7 @@
     }
 
     function loadUserData() {
+      // 1. Швидко з localStorage
       const savedRecords = localStorage.getItem(`h2_records_${currentUser}`);
       storedRecordsMap = savedRecords ? JSON.parse(savedRecords) : {};
 
@@ -1065,12 +1295,51 @@
       document.getElementById('rawInput').value = savedRaw || '';
 
       renderExpenseCategories();
+
+      // 2. Підтягуємо з CloudStorage (синхронізація між пристроями)
+      if (typeof TelegramService !== 'undefined' && TelegramService.isInsideTelegram()) {
+        const prefix = `h2_${currentUser}_`;
+
+        TelegramService.cloudGet(prefix + 'raw', (cloudRaw) => {
+          if (cloudRaw && typeof cloudRaw === 'string' && cloudRaw.length > 0) {
+            // Беремо дані з хмари, якщо вони є
+            document.getElementById('rawInput').value = cloudRaw;
+            localStorage.setItem(`h2_raw_logs_${currentUser}`, cloudRaw);
+          }
+        });
+
+        TelegramService.cloudGet(prefix + 'expenses', (cloudExp) => {
+          if (cloudExp && typeof cloudExp === 'object') {
+            customExpenseCategories = cloudExp;
+            localStorage.setItem(`h2_expenses_${currentUser}`, JSON.stringify(cloudExp));
+            renderExpenseCategories();
+          }
+        });
+
+        TelegramService.cloudGet(prefix + 'records', (cloudRec) => {
+          if (cloudRec && typeof cloudRec === 'object') {
+            storedRecordsMap = cloudRec;
+            localStorage.setItem(`h2_records_${currentUser}`, JSON.stringify(cloudRec));
+            // Перераховуємо після підвантаження
+            processData();
+          }
+        });
+      }
     }
 
     function saveUserData() {
+      // Завжди зберігаємо локально (швидко)
       localStorage.setItem(`h2_records_${currentUser}`, JSON.stringify(storedRecordsMap));
       localStorage.setItem(`h2_expenses_${currentUser}`, JSON.stringify(customExpenseCategories));
       localStorage.setItem(`h2_raw_logs_${currentUser}`, document.getElementById('rawInput').value);
+
+      // І синхронізуємо в Telegram Cloud (якщо всередині Mini App)
+      if (typeof TelegramService !== 'undefined' && TelegramService.isInsideTelegram()) {
+        const prefix = `h2_${currentUser}_`;
+        TelegramService.cloudSet(prefix + 'records', storedRecordsMap);
+        TelegramService.cloudSet(prefix + 'expenses', customExpenseCategories);
+        TelegramService.cloudSet(prefix + 'raw', document.getElementById('rawInput').value);
+      }
     }
 
     function removeRecord(id) {
@@ -1080,11 +1349,33 @@
     }
 
     function clearInputField() {
-      document.getElementById('rawInput').value = '';
-      storedRecordsMap = {};
-      localStorage.removeItem(`h2_raw_logs_${currentUser}`);
-      localStorage.removeItem(`h2_records_${currentUser}`);
-      processData();
+      const doClear = () => {
+        document.getElementById('rawInput').value = '';
+        storedRecordsMap = {};
+        localStorage.removeItem(`h2_raw_logs_${currentUser}`);
+        localStorage.removeItem(`h2_records_${currentUser}`);
+
+        // Чистимо і в CloudStorage
+        if (typeof TelegramService !== 'undefined' && TelegramService.isInsideTelegram()) {
+          const prefix = `h2_${currentUser}_`;
+          TelegramService.cloudRemove(prefix + 'raw');
+          TelegramService.cloudRemove(prefix + 'records');
+          TelegramService.cloudRemove(prefix + 'expenses');
+        }
+
+        processData();
+        if (typeof TelegramService !== 'undefined') {
+          TelegramService.haptic('warning');
+        }
+      };
+
+      if (typeof TelegramService !== 'undefined' && TelegramService.isInsideTelegram()) {
+        TelegramService.showConfirm('Очистити всі поточні дані? (включно з хмарою)', (confirmed) => {
+          if (confirmed) doClear();
+        });
+      } else {
+        if (confirm('Очистити всі поточні дані?')) doClear();
+      }
     }
 
     function parseWeight(str) {
@@ -1382,6 +1673,11 @@
         renderArchiveView();
       } else if (activePage === 'page3') {
         renderForecastView();
+      }
+
+      // Haptic feedback після успішного розрахунку
+      if (typeof TelegramService !== 'undefined') {
+        TelegramService.haptic('success');
       }
     }
 
