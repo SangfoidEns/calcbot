@@ -1,83 +1,84 @@
 import { safeParseDate } from './analytics.js';
 
-// Predict Tomorrow Hourly (00:00 - 23:00)
-export function predictTomorrowHourly(records) {
-  if (!records || records.length === 0) {
-    return Array(24).fill(0).map((_, h) => ({ hour: h, revenue: 0, weight: 0 }));
+// Проста лінійна регресія: y = m*x + b
+function calculateLinearRegression(points) {
+  const n = points.length;
+  if (n === 0) return { slope: 0, intercept: 0 };
+  if (n === 1) return { slope: 0, intercept: points[0].y };
+
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += points[i].x;
+    sumY += points[i].y;
+    sumXY += points[i].x * points[i].y;
+    sumXX += points[i].x * points[i].x;
   }
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const targetDayOfWeek = tomorrow.getDay();
+  const denominator = (n * sumXX - sumX * sumX);
+  if (denominator === 0) return { slope: 0, intercept: sumY / n };
 
-  const sameDayRecords = records.filter(r => safeParseDate(r.parsedDateObj).getDay() === targetDayOfWeek);
-  const sourceRecords = sameDayRecords.length >= 5 ? sameDayRecords : records;
+  const slope = (n * sumXY - sumX * sumY) / denominator;
+  const intercept = (sumY - slope * sumX) / n;
 
-  const uniqueDates = new Set(sourceRecords.map(r => safeParseDate(r.parsedDateObj).toDateString())).size || 1;
-  const hourlyMap = Array.from({ length: 24 }, (_, h) => ({ hour: h, revenue: 0, weight: 0 }));
-
-  sourceRecords.forEach(r => {
-    const h = safeParseDate(r.parsedDateObj).getHours();
-    hourlyMap[h].revenue += (r.eurPaid || 0);
-    hourlyMap[h].weight += (r.exactGramm || 0);
-  });
-
-  return hourlyMap.map(item => ({
-    hour: item.hour,
-    revenue: +(item.revenue / uniqueDates * 1.05).toFixed(1),
-    weight: +(item.weight / uniqueDates * 1.05).toFixed(2)
-  }));
+  return { slope, intercept };
 }
 
-// Predict Next Week Daily (Mon - Sun)
-export function predictNextWeekDaily(records) {
-  const daysOfWeek = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+export function generateForecasts(records) {
   if (!records || records.length === 0) {
-    return daysOfWeek.map(d => ({ dayName: d, dateStr: '', revenue: 0, weight: 0 }));
+    return {
+      tomorrow: { revenue: 0, weight: 0, deals: 0 },
+      week: { revenue: 0, weight: 0, deals: 0 },
+      month: { revenue: 0, weight: 0, deals: 0 },
+      year: { revenue: 0, weight: 0, deals: 0 }
+    };
   }
 
-  const dayStats = Array.from({ length: 7 }, () => ({ totalRev: 0, totalWeight: 0, count: 0 }));
-
+  // Group data by days
+  const dailyMap = {};
   records.forEach(r => {
     const d = safeParseDate(r.parsedDateObj);
-    const dayIdx = d.getDay();
-    dayStats[dayIdx].totalRev += (r.eurPaid || 0);
-    dayStats[dayIdx].totalWeight += (r.exactGramm || 0);
-    dayStats[dayIdx].count += 1;
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    
+    if (!dailyMap[dateKey]) {
+      dailyMap[dateKey] = { revenue: 0, weight: 0, deals: 0, timestamp: d.getTime() };
+    }
+    dailyMap[dateKey].revenue += (r.eurPaid || 0);
+    dailyMap[dateKey].weight += (r.exactGramm || 0);
+    dailyMap[dateKey].deals += 1;
   });
 
-  const result = [];
-  const today = new Date();
+  const sortedDays = Object.values(dailyMap).sort((a, b) => a.timestamp - b.timestamp);
+  const totalDays = sortedDays.length;
 
-  for (let i = 1; i <= 7; i++) {
-    const nextDate = new Date();
-    nextDate.setDate(today.getDate() + i);
-    const dayIdx = nextDate.getDay();
+  // Prepare points for regression
+  const revPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.revenue }));
+  const weightPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.weight }));
+  const dealsPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.deals }));
 
-    const stat = dayStats[dayIdx];
-    const avgRev = stat.count > 0 ? (stat.totalRev / (stat.count / 4 || 1)) : 0;
-    const avgWeight = stat.count > 0 ? (stat.totalWeight / (stat.count / 4 || 1)) : 0;
+  const revReg = calculateLinearRegression(revPoints);
+  const weightReg = calculateLinearRegression(weightPoints);
+  const dealsReg = calculateLinearRegression(dealsPoints);
 
-    result.push({
-      dateStr: `${nextDate.getDate()}.${nextDate.getMonth() + 1}`,
-      dayName: daysOfWeek[dayIdx],
-      revenue: +(avgRev * 1.03).toFixed(1),
-      weight: +(avgWeight * 1.03).toFixed(2)
-    });
-  }
-
-  return result;
-}
-
-// Predict Next Month Summary
-export function predictNextMonthSummary(records) {
-  const weeklyPrediction = predictNextWeekDaily(records);
-  const weeklyRevSum = weeklyPrediction.reduce((acc, d) => acc + d.revenue, 0);
-  const weeklyWeightSum = weeklyPrediction.reduce((acc, d) => acc + d.weight, 0);
+  // Helper to predict sum for future N days
+  const predictSumForDays = (startDayIndex, daysCount) => {
+    let sumRev = 0, sumWeight = 0, sumDeals = 0;
+    for (let i = 0; i < daysCount; i++) {
+      const dayIdx = startDayIndex + i;
+      sumRev += Math.max(0, revReg.slope * dayIdx + revReg.intercept);
+      sumWeight += Math.max(0, weightReg.slope * dayIdx + weightReg.intercept);
+      sumDeals += Math.max(0, dealsReg.slope * dayIdx + dealsReg.intercept);
+    }
+    return {
+      revenue: Math.round(sumRev),
+      weight: Math.round(sumWeight * 10) / 10,
+      deals: Math.round(sumDeals)
+    };
+  };
 
   return {
-    monthlyRevenue: +(weeklyRevSum * 4.33).toFixed(1),
-    monthlyWeight: +(weeklyWeightSum * 4.33).toFixed(1),
-    expectedDeals: Math.round((records.length / 30) * 30 * 1.05) || 0
+    tomorrow: predictSumForDays(totalDays, 1),
+    week: predictSumForDays(totalDays, 7),
+    month: predictSumForDays(totalDays, 30),
+    year: predictSumForDays(totalDays, 365)
   };
 }
