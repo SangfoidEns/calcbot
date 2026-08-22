@@ -20,7 +20,7 @@ import {
 } from './analytics.js';
 import { getTelegramUser } from './telegram.js';
 import { exportArchiveToTxt } from './export.js';
-import { generateForecasts } from './forecast.js'; // FIX: Точна назва файлу
+import { generateForecasts } from './forecast.js';
 
 let currentUser = null;
 let purchases = {};
@@ -50,7 +50,7 @@ function getCategoryColor(categoryName) {
   return categoryColorMap[categoryName];
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function startApp() {
   initUserSession();
 
   purchases = loadPurchases();
@@ -101,7 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAnalyticsPage();
     });
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
 
 function initUserSession() {
   currentUser = getTelegramUser();
@@ -149,9 +155,9 @@ function initNavigation() {
     if (targetKey === 'forecast') renderForecastPage();
   };
 
-  if (tabs.dashboard.tab) tabs.dashboard.tab.addEventListener('click', () => switchTab('dashboard'));
-  if (tabs.analytics.tab) tabs.analytics.tab.addEventListener('click', () => switchTab('analytics'));
-  if (tabs.forecast.tab) tabs.forecast.tab.addEventListener('click', () => switchTab('forecast'));
+  if (tabs.dashboard.tab) tabs.dashboard.tab.onclick = () => switchTab('dashboard');
+  if (tabs.analytics.tab) tabs.analytics.tab.onclick = () => switchTab('analytics');
+  if (tabs.forecast.tab) tabs.forecast.tab.onclick = () => switchTab('forecast');
 }
 
 function initQuickButtons() {
