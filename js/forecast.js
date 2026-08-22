@@ -14,8 +14,6 @@ function calculateLinearRegression(points) {
   }
 
   const denominator = (n * sumXX - sumX * sumX);
-  
-  // Захист від ділення на 0 (якщо всі точки мають однакову координату X)
   if (denominator === 0) return { slope: 0, intercept: sumY / n };
 
   const slope = (n * sumXY - sumX * sumY) / denominator;
