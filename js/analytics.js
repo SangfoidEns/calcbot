@@ -1,91 +1,91 @@
-export function safeParseDate(dateStr) {
-  if (!dateStr) return new Date();
-  const d = new Date(dateStr);
+export function safeParseDate(dateInput) {
+  if (!dateInput) return new Date();
+  const d = new Date(dateInput);
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
 export function filterRecordsByPeriod(records, period) {
-  const now = new Date();
-  return records.filter(r => {
-    const d = safeParseDate(r.parsedDateObj);
-    const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+  if (!records || !Array.isArray(records)) return [];
+  if (period === 'all') return records;
 
-    if (period === 'day') return diffDays <= 1;
-    if (period === 'week') return diffDays <= 7;
-    if (period === 'month') return diffDays <= 30;
-    return true; // 'all'
-  });
+  const now = new Date();
+  const cutoff = new Date();
+
+  if (period === 'week') {
+    cutoff.setDate(now.getDate() - 7);
+  } else if (period === 'month') {
+    cutoff.setMonth(now.getMonth() - 1);
+  } else {
+    return records;
+  }
+
+  return records.filter(r => safeParseDate(r.parsedDateObj) >= cutoff);
 }
 
 export function groupRecordsByTimeSlot(records, period) {
-  const grouped = {};
+  const groups = {};
 
   records.forEach(r => {
     const d = safeParseDate(r.parsedDateObj);
     let key = '';
 
-    if (period === 'day') {
-      key = `${String(d.getHours()).padStart(2, '0')}:00`;
-    } else if (period === 'week') {
+    if (period === 'week') {
       const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-      key = `${days[d.getDay()]} (${d.getDate()}.${d.getMonth() + 1})`;
+      key = days[d.getDay()];
     } else if (period === 'month') {
       key = `${d.getDate()}.${d.getMonth() + 1}`;
     } else {
-      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      key = `${d.getMonth() + 1}.${d.getFullYear()}`;
     }
 
-    if (!grouped[key]) {
-      grouped[key] = { revenue: 0, weight: 0, timestamp: d.getTime() };
+    if (!groups[key]) {
+      groups[key] = { revenue: 0, weight: 0, count: 0 };
     }
 
-    grouped[key].revenue += (r.eurPaid || 0);
-    grouped[key].weight += (r.exactGramm || 0);
+    groups[key].revenue += r.eurPaid || 0;
+    groups[key].weight += r.exactGramm || 0;
+    groups[key].count += 1;
   });
 
-  const sortedKeys = Object.keys(grouped).sort((a, b) => grouped[a].timestamp - grouped[b].timestamp);
-  
-  const result = {};
-  sortedKeys.forEach(k => {
-    result[k] = grouped[k];
-  });
-
-  return result;
+  return groups;
 }
 
-export function getTopClients(records, limit = 3) {
+export function getTopClients(records, topN = 3) {
   const map = {};
+
   records.forEach(r => {
-    if (!map[r.clientName]) {
-      map[r.clientName] = { clientName: r.clientName, totalSpent: 0, totalWeight: 0, dealsCount: 0 };
+    const name = r.clientName || 'Невідомий';
+    if (!map[name]) {
+      map[name] = { clientName: name, totalSpent: 0, totalWeight: 0, dealsCount: 0 };
     }
-    map[r.clientName].totalSpent += r.eurPaid || 0;
-    map[r.clientName].totalWeight += r.exactGramm || 0;
-    map[r.clientName].dealsCount += 1;
+    map[name].totalSpent += r.eurPaid || 0;
+    map[name].totalWeight += r.exactGramm || 0;
+    map[name].dealsCount += 1;
   });
 
   return Object.values(map)
     .sort((a, b) => b.totalSpent - a.totalSpent)
-    .slice(0, limit);
+    .slice(0, topN);
 }
 
-export function calculateWeeklyHeatmap(records, selectedMonth = 'all') {
+export function calculateWeeklyHeatmap(records, monthFilter = 'all') {
   const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));
   let maxVal = 0;
 
   records.forEach(r => {
     const d = safeParseDate(r.parsedDateObj);
-    
-    if (selectedMonth !== 'all' && d.getMonth().toString() !== selectedMonth.toString()) {
+
+    if (monthFilter !== 'all' && d.getMonth() !== parseInt(monthFilter, 10)) {
       return;
     }
 
-    const dayIndex = d.getDay();
+    const day = d.getDay();
     const hour = d.getHours();
+    const rev = r.eurPaid || 0;
 
-    matrix[dayIndex][hour] += (r.eurPaid || 0);
-    if (matrix[dayIndex][hour] > maxVal) {
-      maxVal = matrix[dayIndex][hour];
+    matrix[day][hour] += rev;
+    if (matrix[day][hour] > maxVal) {
+      maxVal = matrix[day][hour];
     }
   });
 
