@@ -1,3 +1,7 @@
+/**
+ * HMS2.0 - Export Engine
+ */
+
 import { filterRecordsByPeriod, safeParseDate } from './analytics.js';
 
 export function exportArchiveToTxt(globalArchiveRecords, currentPeriod) {
