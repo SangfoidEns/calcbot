@@ -1,22 +1,19 @@
 import { safeParseDate } from './analytics.js';
 
-// 1. Прогноз на завтра (погодинно 0..23)
+// Predict Tomorrow Hourly (00:00 - 23:00)
 export function predictTomorrowHourly(records) {
   if (!records || records.length === 0) {
-    return Array(24).fill({ hour: 0, revenue: 0, weight: 0 });
+    return Array(24).fill(0).map((_, h) => ({ hour: h, revenue: 0, weight: 0 }));
   }
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const targetDayOfWeek = tomorrow.getDay(); // 0-6
+  const targetDayOfWeek = tomorrow.getDay();
 
-  // Фільтруємо записи тільки за цей же день тижня в минулому
   const sameDayRecords = records.filter(r => safeParseDate(r.parsedDateObj).getDay() === targetDayOfWeek);
   const sourceRecords = sameDayRecords.length >= 5 ? sameDayRecords : records;
 
-  // Рахуємо кількість унікальних днів у вибірці
   const uniqueDates = new Set(sourceRecords.map(r => safeParseDate(r.parsedDateObj).toDateString())).size || 1;
-
   const hourlyMap = Array.from({ length: 24 }, (_, h) => ({ hour: h, revenue: 0, weight: 0 }));
 
   sourceRecords.forEach(r => {
@@ -25,7 +22,6 @@ export function predictTomorrowHourly(records) {
     hourlyMap[h].weight += (r.exactGramm || 0);
   });
 
-  // Усереднення з легким трендом (+5% оптимістичний коефіцієнт)
   return hourlyMap.map(item => ({
     hour: item.hour,
     revenue: +(item.revenue / uniqueDates * 1.05).toFixed(1),
@@ -33,11 +29,11 @@ export function predictTomorrowHourly(records) {
   }));
 }
 
-// 2. Прогноз на тиждень (по днях: Пн..Нд)
+// Predict Next Week Daily (Mon - Sun)
 export function predictNextWeekDaily(records) {
   const daysOfWeek = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   if (!records || records.length === 0) {
-    return daysOfWeek.map(d => ({ day: d, revenue: 0, weight: 0 }));
+    return daysOfWeek.map(d => ({ dayName: d, dateStr: '', revenue: 0, weight: 0 }));
   }
 
   const dayStats = Array.from({ length: 7 }, () => ({ totalRev: 0, totalWeight: 0, count: 0 }));
@@ -50,7 +46,6 @@ export function predictNextWeekDaily(records) {
     dayStats[dayIdx].count += 1;
   });
 
-  // Починаємо розрахунок від завтрашнього дня на 7 днів уперед
   const result = [];
   const today = new Date();
 
@@ -60,7 +55,7 @@ export function predictNextWeekDaily(records) {
     const dayIdx = nextDate.getDay();
 
     const stat = dayStats[dayIdx];
-    const avgRev = stat.count > 0 ? (stat.totalRev / (stat.count / 4 || 1)) : 0; // розрахунок за останні ~4 тижні
+    const avgRev = stat.count > 0 ? (stat.totalRev / (stat.count / 4 || 1)) : 0;
     const avgWeight = stat.count > 0 ? (stat.totalWeight / (stat.count / 4 || 1)) : 0;
 
     result.push({
@@ -74,13 +69,12 @@ export function predictNextWeekDaily(records) {
   return result;
 }
 
-// 3. Прогноз на місяць (Агрегований підсумок)
+// Predict Next Month Summary
 export function predictNextMonthSummary(records) {
   const weeklyPrediction = predictNextWeekDaily(records);
   const weeklyRevSum = weeklyPrediction.reduce((acc, d) => acc + d.revenue, 0);
   const weeklyWeightSum = weeklyPrediction.reduce((acc, d) => acc + d.weight, 0);
 
-  // 1 місяць ≈ 4.33 тижні
   return {
     monthlyRevenue: +(weeklyRevSum * 4.33).toFixed(1),
     monthlyWeight: +(weeklyWeightSum * 4.33).toFixed(1),
