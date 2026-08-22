@@ -1,6 +1,5 @@
 import { safeParseDate } from './analytics.js';
 
-// Проста лінійна регресія: y = m*x + b
 function calculateLinearRegression(points) {
   const n = points.length;
   if (n === 0) return { slope: 0, intercept: 0 };
@@ -25,22 +24,22 @@ function calculateLinearRegression(points) {
 
 export function generateForecasts(records) {
   if (!records || records.length === 0) {
-    return {
-      tomorrow: { revenue: 0, weight: 0, deals: 0 },
-      week: { revenue: 0, weight: 0, deals: 0 },
-      month: { revenue: 0, weight: 0, deals: 0 },
-      year: { revenue: 0, weight: 0, deals: 0 }
-    };
+    const empty = { revenue: 0, weight: 0, deals: 0 };
+    return { tomorrow: empty, week: empty, month: empty, year: empty };
   }
 
-  // Group data by days
   const dailyMap = {};
   records.forEach(r => {
     const d = safeParseDate(r.parsedDateObj);
     const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     
     if (!dailyMap[dateKey]) {
-      dailyMap[dateKey] = { revenue: 0, weight: 0, deals: 0, timestamp: d.getTime() };
+      dailyMap[dateKey] = { 
+        revenue: 0, 
+        weight: 0, 
+        deals: 0, 
+        timestamp: new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() 
+      };
     }
     dailyMap[dateKey].revenue += (r.eurPaid || 0);
     dailyMap[dateKey].weight += (r.exactGramm || 0);
@@ -48,25 +47,31 @@ export function generateForecasts(records) {
   });
 
   const sortedDays = Object.values(dailyMap).sort((a, b) => a.timestamp - b.timestamp);
-  const totalDays = sortedDays.length;
+  if (sortedDays.length === 0) {
+    const empty = { revenue: 0, weight: 0, deals: 0 };
+    return { tomorrow: empty, week: empty, month: empty, year: empty };
+  }
 
-  // Prepare points for regression
-  const revPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.revenue }));
-  const weightPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.weight }));
-  const dealsPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.deals }));
+  const firstTimestamp = sortedDays[0].timestamp;
+  const MS_PER_DAY = 86400000;
+
+  const revPoints = sortedDays.map(d => ({ x: Math.round((d.timestamp - firstTimestamp) / MS_PER_DAY), y: d.revenue }));
+  const weightPoints = sortedDays.map(d => ({ x: Math.round((d.timestamp - firstTimestamp) / MS_PER_DAY), y: d.weight }));
+  const dealsPoints = sortedDays.map(d => ({ x: Math.round((d.timestamp - firstTimestamp) / MS_PER_DAY), y: d.deals }));
 
   const revReg = calculateLinearRegression(revPoints);
   const weightReg = calculateLinearRegression(weightPoints);
   const dealsReg = calculateLinearRegression(dealsPoints);
 
-  // Helper to predict sum for future N days
+  const lastDayIndex = Math.round((sortedDays[sortedDays.length - 1].timestamp - firstTimestamp) / MS_PER_DAY);
+
   const predictSumForDays = (startDayIndex, daysCount) => {
     let sumRev = 0, sumWeight = 0, sumDeals = 0;
-    for (let i = 0; i < daysCount; i++) {
-      const dayIdx = startDayIndex + i;
-      sumRev += Math.max(0, revReg.slope * dayIdx + revReg.intercept);
-      sumWeight += Math.max(0, weightReg.slope * dayIdx + weightReg.intercept);
-      sumDeals += Math.max(0, dealsReg.slope * dayIdx + dealsReg.intercept);
+    for (let i = 1; i <= daysCount; i++) {
+      const targetDay = startDayIndex + i;
+      sumRev += Math.max(0, revReg.slope * targetDay + revReg.intercept);
+      sumWeight += Math.max(0, weightReg.slope * targetDay + weightReg.intercept);
+      sumDeals += Math.max(0, dealsReg.slope * targetDay + dealsReg.intercept);
     }
     return {
       revenue: Math.round(sumRev),
@@ -76,9 +81,9 @@ export function generateForecasts(records) {
   };
 
   return {
-    tomorrow: predictSumForDays(totalDays, 1),
-    week: predictSumForDays(totalDays, 7),
-    month: predictSumForDays(totalDays, 30),
-    year: predictSumForDays(totalDays, 365)
+    tomorrow: predictSumForDays(lastDayIndex, 1),
+    week: predictSumForDays(lastDayIndex, 7),
+    month: predictSumForDays(lastDayIndex, 30),
+    year: predictSumForDays(lastDayIndex, 365)
   };
 }
