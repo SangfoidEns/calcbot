@@ -114,7 +114,7 @@ export function parseLogs(rawText) {
         lines[i+2].toLowerCase() === 'gramm' && 
         lines[i+3] === '€') {
       currentCategory = line.toUpperCase();
-      i += 4; // Перестрибуємо заголовок
+      i += 4;
       continue;
     }
 
