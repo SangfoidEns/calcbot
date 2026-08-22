@@ -10,6 +10,7 @@ export function getTelegramUser() {
     };
   }
 
+  // Режим девелопменту / Фолбек для звичайного браузера
   return {
     id: 'local_dev_user',
     firstName: 'Dev',
