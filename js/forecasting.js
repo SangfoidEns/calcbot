@@ -1,6 +1,5 @@
 import { safeParseDate } from './analytics.js';
 
-// Проста лінійна регресія: y = m*x + b
 function calculateLinearRegression(points) {
   const n = points.length;
   if (n === 0) return { slope: 0, intercept: 0 };
@@ -33,7 +32,6 @@ export function generateForecasts(records) {
     };
   }
 
-  // Group data by days
   const dailyMap = {};
   records.forEach(r => {
     const d = safeParseDate(r.parsedDateObj);
@@ -50,7 +48,6 @@ export function generateForecasts(records) {
   const sortedDays = Object.values(dailyMap).sort((a, b) => a.timestamp - b.timestamp);
   const totalDays = sortedDays.length;
 
-  // Prepare points for regression
   const revPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.revenue }));
   const weightPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.weight }));
   const dealsPoints = sortedDays.map((d, idx) => ({ x: idx, y: d.deals }));
@@ -59,7 +56,6 @@ export function generateForecasts(records) {
   const weightReg = calculateLinearRegression(weightPoints);
   const dealsReg = calculateLinearRegression(dealsPoints);
 
-  // Helper to predict sum for future N days
   const predictSumForDays = (startDayIndex, daysCount) => {
     let sumRev = 0, sumWeight = 0, sumDeals = 0;
     for (let i = 0; i < daysCount; i++) {
