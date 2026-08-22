@@ -19,6 +19,7 @@ export function exportArchiveToTxt(globalArchiveRecords, currentPeriod) {
   let txtLines = [];
 
   Object.keys(groupedByCat).forEach(cat => {
+    txtLines.push(`\n${cat}`);
     txtLines.push(`| name | gramm | € | time |`);
 
     groupedByCat[cat].sort((a, b) => safeParseDate(a.parsedDateObj) - safeParseDate(b.parsedDateObj));
