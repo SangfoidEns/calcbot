@@ -1,13 +1,22 @@
 export function getTelegramUser() {
-  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user) {
-    const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
-    return {
-      id: tgUser.id.toString(),
-      firstName: tgUser.first_name || 'User',
-      lastName: tgUser.last_name || '',
-      username: tgUser.username ? `@${tgUser.username}` : '',
-      photoUrl: tgUser.photo_url || ''
-    };
+  if (window.Telegram && window.Telegram.WebApp) {
+    try {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    } catch (e) {
+      console.warn('Telegram WebApp expand error:', e);
+    }
+
+    if (window.Telegram.WebApp.initDataUnsafe?.user) {
+      const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+      return {
+        id: tgUser.id.toString(),
+        firstName: tgUser.first_name || 'User',
+        lastName: tgUser.last_name || '',
+        username: tgUser.username ? `@${tgUser.username}` : '',
+        photoUrl: tgUser.photo_url || ''
+      };
+    }
   }
 
   // Режим девелопменту / Фолбек для звичайного браузера
