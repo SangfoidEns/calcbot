@@ -1,3 +1,7 @@
+/**
+ * HMS2.0 - Storage Engine
+ */
+
 let currentUserId = 'default';
 
 export function setCurrentUserId(userId) {
@@ -8,24 +12,12 @@ function getScopedKey(key) {
   return `hms2_${currentUserId}_${key}`;
 }
 
-// Безпечний запис у LocalStorage з обробкою переповнення пам'яті
-function safeSetItem(key, value) {
-  try {
-    localStorage.setItem(key, value);
-    return true;
-  } catch (e) {
-    if (e.name === 'QuotaExceededError' || e.code === 22) {
-      console.error('[HMS2.0 Store] Переповнення LocalStorage! Дані занадто великі.');
-      alert('⚠️ Увага: Пам\'ять LocalStorage заповнена! Експортуйте архів у TXT, щоб не втратити дані.');
-    } else {
-      console.error('[HMS2.0 Store] Помилка запису:', e);
-    }
-    return false;
-  }
-}
-
 export function savePurchases(data) {
-  safeSetItem(getScopedKey('purchases_v2'), JSON.stringify(data));
+  try {
+    localStorage.setItem(getScopedKey('purchases_v2'), JSON.stringify(data));
+  } catch (e) {
+    console.error('[Storage Error: savePurchases]', e);
+  }
 }
 
 export function loadPurchases() {
@@ -33,13 +25,16 @@ export function loadPurchases() {
     const raw = localStorage.getItem(getScopedKey('purchases_v2'));
     return raw ? JSON.parse(raw) : {};
   } catch (e) {
-    console.error('[HMS2.0 Store] Помилка зчитування закупівель:', e);
     return {};
   }
 }
 
 export function saveRawLogs(text) {
-  safeSetItem(getScopedKey('raw_logs_v2'), text);
+  try {
+    localStorage.setItem(getScopedKey('raw_logs_v2'), text);
+  } catch (e) {
+    console.error('[Storage Error: saveRawLogs]', e);
+  }
 }
 
 export function loadRawLogs() {
@@ -51,7 +46,11 @@ export function loadRawLogs() {
 }
 
 export function saveMyExpenses(data) {
-  safeSetItem(getScopedKey('my_expenses_v2'), JSON.stringify(data));
+  try {
+    localStorage.setItem(getScopedKey('my_expenses_v2'), JSON.stringify(data));
+  } catch (e) {
+    console.error('[Storage Error: saveMyExpenses]', e);
+  }
 }
 
 export function loadMyExpenses() {
@@ -64,28 +63,18 @@ export function loadMyExpenses() {
 }
 
 export function saveGlobalArchive(newRecords) {
-  if (!Array.isArray(newRecords) || newRecords.length === 0) {
-    return loadGlobalArchive();
-  }
-
   try {
     const existingArchive = loadGlobalArchive();
     const map = new Map();
 
-    // Заповнюємо Map для швидкої дедуплікації O(N)
-    for (let i = 0; i < existingArchive.length; i++) {
-      map.set(existingArchive[i].id, existingArchive[i]);
-    }
-    for (let i = 0; i < newRecords.length; i++) {
-      map.set(newRecords[i].id, newRecords[i]);
-    }
+    existingArchive.forEach(item => map.set(item.id, item));
+    newRecords.forEach(item => map.set(item.id, item));
 
     const updatedArchive = Array.from(map.values());
-    const isSaved = safeSetItem(getScopedKey('global_archive_v2'), JSON.stringify(updatedArchive));
-    
-    return isSaved ? updatedArchive : existingArchive;
+    localStorage.setItem(getScopedKey('global_archive_v2'), JSON.stringify(updatedArchive));
+    return updatedArchive;
   } catch (e) {
-    console.error('[HMS2.0 Store] Помилка оновлення архіву:', e);
+    console.error('[Storage Error: saveGlobalArchive]', e);
     return [];
   }
 }
@@ -95,7 +84,6 @@ export function loadGlobalArchive() {
     const raw = localStorage.getItem(getScopedKey('global_archive_v2'));
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
-    console.error('[HMS2.0 Store] Помилка завантаження архіву:', e);
     return [];
   }
 }
@@ -104,6 +92,6 @@ export function clearGlobalArchive() {
   try {
     localStorage.removeItem(getScopedKey('global_archive_v2'));
   } catch (e) {
-    console.error('[HMS2.0 Store] Помилка очищення архіву:', e);
+    console.error('[Storage Error: clearGlobalArchive]', e);
   }
 }
