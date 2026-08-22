@@ -20,6 +20,7 @@ import {
 } from './analytics.js';
 import { getTelegramUser } from './telegram.js';
 import { exportArchiveToTxt } from './export.js';
+import { generateForecasts } from './forecasting.js';
 
 let currentUser = null;
 let purchases = {};
@@ -81,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearGlobalArchive();
         globalArchiveRecords = [];
         renderAnalyticsPage();
+        renderForecastPage();
       }
     });
   }
@@ -123,27 +125,34 @@ function initUserSession() {
 }
 
 function initNavigation() {
-  const tabDashboard = document.getElementById('tabDashboard');
-  const tabAnalytics = document.getElementById('tabAnalytics');
-  const pageDashboard = document.getElementById('pageDashboard');
-  const pageAnalytics = document.getElementById('pageAnalytics');
+  const tabs = {
+    dashboard: { tab: document.getElementById('tabDashboard'), page: document.getElementById('pageDashboard') },
+    analytics: { tab: document.getElementById('tabAnalytics'), page: document.getElementById('pageAnalytics') },
+    forecast: { tab: document.getElementById('tabForecast'), page: document.getElementById('pageForecast') }
+  };
 
-  if (!tabDashboard || !tabAnalytics || !pageDashboard || !pageAnalytics) return;
+  const activeClass = 'px-4 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
+  const inactiveClass = 'px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
 
-  tabDashboard.addEventListener('click', () => {
-    pageDashboard.classList.remove('hidden');
-    pageAnalytics.classList.add('hidden');
-    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
-  });
+  const switchTab = (targetKey) => {
+    Object.keys(tabs).forEach(key => {
+      if (!tabs[key].tab || !tabs[key].page) return;
+      if (key === targetKey) {
+        tabs[key].page.classList.remove('hidden');
+        tabs[key].tab.className = activeClass;
+      } else {
+        tabs[key].page.classList.add('hidden');
+        tabs[key].tab.className = inactiveClass;
+      }
+    });
 
-  tabAnalytics.addEventListener('click', () => {
-    pageAnalytics.classList.remove('hidden');
-    pageDashboard.classList.add('hidden');
-    tabAnalytics.className = 'px-5 py-2 text-xs font-bold rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 transition';
-    tabDashboard.className = 'px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition';
-    renderAnalyticsPage();
-  });
+    if (targetKey === 'analytics') renderAnalyticsPage();
+    if (targetKey === 'forecast') renderForecastPage();
+  };
+
+  if (tabs.dashboard.tab) tabs.dashboard.tab.addEventListener('click', () => switchTab('dashboard'));
+  if (tabs.analytics.tab) tabs.analytics.tab.addEventListener('click', () => switchTab('analytics'));
+  if (tabs.forecast.tab) tabs.forecast.tab.addEventListener('click', () => switchTab('forecast'));
 }
 
 function initQuickButtons() {
@@ -331,6 +340,30 @@ function processCurrentInput() {
   if (pageAnalytics && !pageAnalytics.classList.contains('hidden')) {
     renderAnalyticsPage();
   }
+
+  const pageForecast = document.getElementById('pageForecast');
+  if (pageForecast && !pageForecast.classList.contains('hidden')) {
+    renderForecastPage();
+  }
+}
+
+function renderForecastPage() {
+  const forecasts = generateForecasts(globalArchiveRecords);
+
+  const setForecastData = (prefix, data) => {
+    const revEl = document.getElementById(`${prefix}Rev`);
+    const weightEl = document.getElementById(`${prefix}Weight`);
+    const dealsEl = document.getElementById(`${prefix}Deals`);
+
+    if (revEl) revEl.innerText = `${data.revenue} €`;
+    if (weightEl) weightEl.innerText = `${data.weight} г`;
+    if (dealsEl) dealsEl.innerText = `${data.deals}`;
+  };
+
+  setForecastData('fcTomorrow', forecasts.tomorrow);
+  setForecastData('fcWeek', forecasts.week);
+  setForecastData('fcMonth', forecasts.month);
+  setForecastData('fcYear', forecasts.year);
 }
 
 function renderTopClients() {
