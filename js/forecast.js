@@ -1,3 +1,7 @@
+/**
+ * HMS2.0 - Forecast Math Engine
+ */
+
 import { safeParseDate } from './analytics.js';
 
 function calculateLinearRegression(points) {
