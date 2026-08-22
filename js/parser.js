@@ -109,13 +109,12 @@ export function parseLogs(rawText) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Перевірка заголовка структури
     if (i + 3 < lines.length && 
         lines[i+1].toLowerCase() === 'name' && 
         lines[i+2].toLowerCase() === 'gramm' && 
         lines[i+3] === '€') {
       currentCategory = line.toUpperCase();
-      i += 4; // Виправлено зсув
+      i += 4;
       continue;
     }
 
