@@ -356,12 +356,15 @@
             <p class="text-[10px] text-gray-400 truncate">Угоди · каса · прогноз</p>
           </div>
         </div>
-        <div id="tgUserBadge" class="flex items-center gap-1.5 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/10 text-[11px] shrink-0">
-          <span class="w-1.5 h-1.5 rounded-full bg-neonBlue animate-pulse"></span>
-          <span id="tgUserName" class="font-semibold text-neonBlue max-w-[90px] truncate">ТГ</span>
-          <button onclick="loginWithTelegramPrompt()" class="text-[10px] text-gray-400 hover:text-white ml-0.5">⇄</button>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" id="themeToggleBtn" onclick="toggleAppTheme()" class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-black/25 text-[11px] font-semibold text-gray-300 hover:text-white transition" title="Перемикач теми">🌙 Темна</button>
+          <div id="tgUserBadge" class="flex items-center gap-1.5 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/10 text-[11px]">
+            <span class="w-1.5 h-1.5 rounded-full bg-neonBlue animate-pulse"></span>
+            <span id="tgUserName" class="font-semibold text-neonBlue max-w-[90px] truncate">ТГ</span>
+            <button onclick="loginWithTelegramPrompt()" class="text-[10px] text-gray-400 hover:text-white ml-0.5">⇄</button>
+          </div>
         </div>
-        <!-- Сесія: угоди й витрати лише в пам'яті після «Розрахувати». -->
+        <!-- Сесія: угоди й витрати лише в пам'яті. Темна тема за замовчуванням. -->
       </div>
 
       <!-- Tabs: short labels -->
@@ -682,7 +685,7 @@
         <p class="text-[10px] text-gray-500">Формати: <code class="text-neonGreen">Імʼя вага € час</code> або таблиця name / gramm / € / time. Перший рядок — сорт. Дані лише в сесії (без збереження).</p>
         <textarea id="rawInput" class="w-full h-48 p-2.5 bg-brandDark/90 rounded-xl border border-brandBorder text-xs font-mono text-gray-200 focus:outline-none focus:border-neonGreen/50 transition resize-none leading-relaxed" placeholder="Super Silver&#10;name gramm € time&#10;Борис 0 +50долг 24.8 12:00&#10;..."></textarea>
         <div class="grid grid-cols-3 gap-2">
-          <button type="button" onclick="processData()" class="col-span-2 py-2.5 bg-gradient-to-r from-neonGreen to-emerald-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-neonGreen/20 hover:opacity-95 active:scale-[0.98] transition">Розрахувати / В архів</button>
+          <button type="button" onclick="processData()" class="col-span-2 py-2.5 bg-gradient-to-r from-neonGreen to-emerald-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-neonGreen/20 hover:opacity-95 active:scale-[0.98] transition">Розрахувати</button>
           <button type="button" id="btnClearJournal" onclick="clearInputField()" class="col-span-1 py-2.5 bg-white/5 hover:bg-neonRed/20 text-neonRed border border-neonRed/30 font-semibold text-xs rounded-xl transition active:scale-[0.98]">Скинути</button>
         </div>
       </div>
@@ -740,12 +743,9 @@
           <p class="text-sm sm:text-lg font-black text-neonPurple mt-1" id="archKpiAvgDeal">0.00 €</p>
         </div>
         <div class="bg-brandCard/90 p-3 rounded-xl neon-border col-span-2 sm:col-span-1">
-          <p class="text-[10px] font-medium text-neonYellow">Закуп (€)</p>
+          <p class="text-[10px] font-medium text-neonYellow">Закуп (сорт)</p>
           <p class="text-sm sm:text-lg font-black text-neonYellow mt-1" id="archKpiPurchases">0.00 €</p>
-        </div>
-        <div class="bg-brandCard/90 p-3 rounded-xl neon-border">
-          <p class="text-[10px] font-medium text-gray-400">Закуп (г)</p>
-          <p class="text-sm sm:text-lg font-black text-white mt-1" id="archKpiPurchaseGrams">0 г</p>
+          <p class="text-[9px] text-gray-500 mt-0.5">назва сорту + грами</p>
         </div>
         <div class="bg-brandCard/90 p-3 rounded-xl neon-border-red">
           <p class="text-[10px] font-medium text-neonRed">Витрати</p>
@@ -759,29 +759,6 @@
         </div>
       </div>
 
-      <!-- Історія закупівель в архіві -->
-      <div class="bg-brandCard/90 p-4 rounded-2xl neon-border space-y-2">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xs font-bold uppercase text-neonYellow">🛒 Історія закупівель</h3>
-          <span class="text-[10px] text-gray-400 font-mono" id="archPurchaseCountLabel">0 записів</span>
-        </div>
-        <div class="overflow-x-auto max-h-40 overflow-y-auto">
-          <table class="w-full text-left text-[11px] text-gray-300">
-            <thead class="text-gray-500 uppercase text-[10px]">
-              <tr>
-                <th class="p-2">Дата</th>
-                <th class="p-2">Сорт</th>
-                <th class="p-2">Грами</th>
-                <th class="p-2">€/100г</th>
-                <th class="p-2">Сума</th>
-              </tr>
-            </thead>
-            <tbody id="archivePurchasesTableBody">
-              <tr><td colspan="5" class="p-3 text-center text-gray-500">Немає закупівель</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       <!-- 25 метрик (по фільтру архіву) -->
       <div class="bg-brandCard/90 p-5 rounded-2xl neon-border space-y-4">
@@ -882,73 +859,56 @@
         </div>
       </div>
 
-      <!-- ТАБЛИЦІ ЗА СОРТАМИ -->
-      <div class="space-y-4">
-        <div class="flex justify-between items-center border-b border-brandBorder pb-2">
-          <h2 class="text-sm font-bold tracking-wider uppercase text-neonGreen flex items-center gap-2">
-            📚 Таблиці угод за кожним сортом окремо
-          </h2>
-          <span class="text-xs text-gray-400 font-mono" id="varietyTablesCount">Знайдено сортів: 0</span>
-        </div>
 
-        <div id="varietyTablesContainer" class="space-y-6">
-          <p class="text-gray-500 text-xs">Завантаження таблиць сортів...</p>
-        </div>
-      </div>
-
-      <!-- ПОВНИЙ АРХІВ УСІХ УГОД -->
+      <!-- СУПЕР-ТАБЛИЦЯ: угоди + витрати -->
       <div class="bg-brandCard/90 p-5 rounded-2xl neon-border space-y-4">
         <div class="flex justify-between items-center flex-wrap gap-3">
           <div>
-            <h2 class="text-sm font-bold tracking-wider uppercase text-gray-200">🗄️ Угоди сесії (майстер-список)</h2>
-            <p class="text-[11px] text-gray-400">Угоди поточної сесії (з таблиці журналу)</p>
+            <h2 class="text-sm font-bold tracking-wider uppercase text-gray-200">🗄️ Супер-таблиця</h2>
+            <p class="text-[11px] text-gray-400">Угоди + витрати · cost/маржа/борг · жовтое ≥50€ · закуп: Super Silver 200</p>
           </div>
-          
           <div class="flex items-center gap-2 flex-wrap">
-            <select id="archiveVarietyFilter" onchange="onArchiveCategoryFilterChange()" class="px-2.5 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-neonGreen focus:outline-none" title="Фільтр категорії (синхрон зверху)">
+            <select id="archiveVarietyFilter" onchange="onArchiveCategoryFilterChange()" class="px-2.5 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-neonGreen focus:outline-none">
               <option value="ALL">Усі категорії</option>
             </select>
-
-            <input type="text" id="archiveSearch" onkeyup="filterArchiveMasterTable()" placeholder="Пошук в архіві..." class="px-3 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-gray-200 focus:outline-none">
-
-            <button onclick="exportArchiveToCSV()" class="px-3 py-1.5 bg-neonGreen/15 hover:bg-neonGreen/25 text-neonGreen border border-neonGreen/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5" title="Експорт поточного фільтра в CSV">
-              <span>📥</span> CSV
-            </button>
-            <button onclick="exportArchiveToJSON()" class="px-3 py-1.5 bg-neonBlue/15 hover:bg-neonBlue/25 text-neonBlue border border-neonBlue/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5" title="Повний бекап архіву в JSON (зручно імпортувати назад)">
-              <span>💾</span> JSON
-            </button>
-            <label class="px-3 py-1.5 bg-neonPurple/15 hover:bg-neonPurple/25 text-neonPurple border border-neonPurple/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer" title="Завантажити CSV або JSON бекап назад в архів">
-              <span>📤</span> Імпорт
-              <input type="file" id="archiveImportInput" accept=".csv,.json,text/csv,application/json" class="hidden" onchange="importArchiveFromFile(this)" />
+            <input type="text" id="archiveSearch" onkeyup="renderSuperTable()" placeholder="Пошук..." class="px-3 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-gray-200 focus:outline-none">
+            <label class="px-3 py-1.5 bg-neonPurple/15 hover:bg-neonPurple/25 text-neonPurple border border-neonPurple/40 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1">
+              📂 Завантажити
+              <input type="file" id="sessionFileInput" accept=".txt,.csv,.json,text/plain,text/csv,application/json" class="hidden" onchange="loadSessionFromFile(this)" />
             </label>
-            <button type="button" onclick="clearArchive()" class="px-3 py-1.5 bg-neonRed/15 hover:bg-neonRed/25 text-neonRed border border-neonRed/40 rounded-lg text-xs font-bold transition" title="Повністю очистити архів сесії">
-              🗑 Архів
-            </button>
+            <button type="button" onclick="exportCombinedSessionToCSV()" class="px-3 py-1.5 bg-neonGreen/15 hover:bg-neonGreen/25 text-neonGreen border border-neonGreen/40 rounded-lg text-xs font-bold transition">📥 CSV</button>
+            <button type="button" onclick="exportCombinedSessionToJSON()" class="px-3 py-1.5 bg-neonBlue/15 hover:bg-neonBlue/25 text-neonBlue border border-neonBlue/40 rounded-lg text-xs font-bold transition">💾 JSON</button>
+            <button type="button" onclick="clearArchive()" class="px-3 py-1.5 bg-neonRed/15 hover:bg-neonRed/25 text-neonRed border border-neonRed/40 rounded-lg text-xs font-bold transition">🗑 Сесія</button>
           </div>
         </div>
-
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-gray-300">
+          <table class="w-full text-left text-xs text-gray-300" id="superTable">
             <thead class="bg-brandDark/90 text-gray-400 uppercase text-[10px]">
               <tr>
-                <th class="p-3">Сорт</th>
-                <th class="p-3">Клієнт</th>
-                <th class="p-3">Базова вага</th>
-                <th class="p-3 text-neonGreen">Точна вага (×1.1)</th>
-                <th class="p-3 text-neonRed">Ціна за 1г</th>
-                <th class="p-3 text-neonRed">Cost (€)</th>
-                <th class="p-3 font-bold text-white">Виручка (€)</th>
-                <th class="p-3 text-neonBlue">Прибуток (€)</th>
-                <th class="p-3 text-neonYellow">% прибутку</th>
-                <th class="p-3 text-neonYellow">🎁 Бонус</th>
-                <th class="p-3">Запис боргу/карта</th>
-                <th class="p-3">Час</th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('kind')">Тип <span data-sk="kind"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('name')">Сорт / назва <span data-sk="name"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('detail')">Клієнт <span data-sk="detail"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('baseWeight')">База г <span data-sk="baseWeight"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white text-neonGreen" onclick="sortSuperTable('weight')">Точна г <span data-sk="weight"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white text-neonRed" onclick="sortSuperTable('cost')">Cost <span data-sk="cost"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('amount')">€ <span data-sk="amount"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white text-neonBlue" onclick="sortSuperTable('profit')">Прибуток <span data-sk="profit"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white text-neonYellow" onclick="sortSuperTable('margin')">% <span data-sk="margin"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('method')">Оплата <span data-sk="method"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('note')">Борг/нотатка <span data-sk="note"></span></th>
+                <th class="p-2 cursor-pointer select-none hover:text-white" onclick="sortSuperTable('time')">Час <span data-sk="time"></span></th>
               </tr>
             </thead>
-            <tbody id="archiveMasterTableBody" class="divide-y divide-brandBorder">
-              <tr><td colspan="12" class="p-4 text-center text-gray-500">Немає угод у сесії — встав таблицю й натисни «Розрахувати»</td></tr>
+            <tbody id="superTableBody" class="divide-y divide-brandBorder">
+              <tr><td colspan="12" class="p-4 text-center text-gray-500">Порожньо — розрахуй угоди та витрати</td></tr>
             </tbody>
           </table>
+        </div>
+        <!-- compat ids for old JS -->
+        <div class="hidden" aria-hidden="true">
+          <tbody id="archiveMasterTableBody"></tbody>
+          <tbody id="expenseSuperTableBody"></tbody>
+          <input type="file" id="archiveImportInput" />
         </div>
       </div>
 
@@ -987,11 +947,11 @@
             <span class="text-[10px] px-2 py-0.5 rounded bg-neonRed/10 text-neonRed border border-neonRed/30 font-mono">без збереження</span>
           </div>
           <p class="text-[10px] text-gray-500 leading-snug">
-            Формат: <code class="text-neonRed">Витрати / name / € / time</code> або рядок
-            <code class="text-neonRed">Tabak 160 3.9 20:00</code>. «Karte» у назві → карта.
-            Кожне «Розрахувати» <b>перераховує заново</b> з таблиці (сесія).
+            Формат: <code class="text-neonRed">name / € / time</code>. «Karte» → карта.
+            Закуп сорту: <code class="text-neonYellow">Super Silver 200</code> + сума € → 200 г на склад.
+            Файли завантажуй у <b>супер-таблиці архіву</b>.
           </p>
-          <textarea id="rawExpenseInput" class="w-full h-52 p-2.5 bg-brandDark/90 rounded-xl border border-brandBorder text-xs font-mono text-gray-200 focus:outline-none focus:border-neonRed/50 transition resize-none leading-relaxed" placeholder="Витрати&#10;name&#10;€&#10;time&#10;Обмен&#10;1200&#10;24.8 19:00&#10;Tabak&#10;160&#10;3.9 20:00&#10;Tabak Karte&#10;75&#10;3.9 21:00&#10;..."></textarea>
+          <textarea id="rawExpenseInput" class="w-full h-52 p-2.5 bg-brandDark/90 rounded-xl border border-brandBorder text-xs font-mono text-gray-200 focus:outline-none focus:border-neonRed/50 transition resize-none leading-relaxed" placeholder="Витрати&#10;name&#10;€&#10;time&#10;Super Silver 200&#10;1200&#10;24.8 19:00&#10;Tabak&#10;160&#10;3.9 20:00&#10;Tabak Karte&#10;75&#10;3.9 21:00&#10;..."></textarea>
           <div class="grid grid-cols-3 gap-2">
             <button type="button" onclick="processExpenseBulk()" class="col-span-2 py-2.5 bg-gradient-to-r from-neonRed to-rose-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-neonRed/20 hover:opacity-95 active:scale-[0.98] transition">Розрахувати витрати</button>
             <button type="button" onclick="clearExpenseBulkInput()" class="col-span-1 py-2.5 bg-white/5 hover:bg-neonRed/20 text-neonRed border border-neonRed/30 font-semibold text-xs rounded-xl transition active:scale-[0.98]">Скинути</button>
@@ -1021,47 +981,11 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="bg-brandCard/90 p-4 rounded-2xl neon-border space-y-3">
-          <h3 class="text-xs font-bold uppercase text-gray-300">Витрати з таблиці <span class="text-[10px] text-gray-500 font-normal">(кожний рядок окремо · за часом)</span></h3>
-          <div id="expCurrentList" class="space-y-2 max-h-72 overflow-y-auto text-xs">
-            <p class="text-gray-500">Порожньо</p>
-          </div>
-        </div>
-        <div class="bg-brandCard/90 p-4 rounded-2xl neon-border-blue space-y-3">
-          <h3 class="text-xs font-bold uppercase text-neonBlue">Усі записи (за часом)</h3>
-          <div id="expHistoryList" class="space-y-1.5 max-h-72 overflow-y-auto text-[11px] font-mono text-gray-300">
-            <p class="text-gray-500">Ще немає змін</p>
-          </div>
-        </div>
-      </div>
 
-      <!-- Закуп сорту (перенесено з дашборда) -->
-      <div class="bg-brandCard/90 p-4 rounded-2xl neon-border space-y-3">
-        <h3 class="text-xs font-bold uppercase text-neonYellow tracking-wider">🛒 Закуп сорту</h3>
-        <p class="text-[10px] text-gray-500">Йде в витрати готівкою і оновлює склад обраного сорту.</p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
-          <div class="sm:col-span-2">
-            <label class="text-[10px] text-gray-400 uppercase">Сорт</label>
-            <input type="text" id="purchaseVarietyInput" placeholder="BANNAN" class="w-full mt-0.5 bg-brandDark border border-brandBorder rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-neonYellow" />
-          </div>
-          <div>
-            <label class="text-[10px] text-gray-400 uppercase">Грами</label>
-            <input type="number" id="purchaseGramsInput" placeholder="100" step="1" min="0" class="w-full mt-0.5 bg-brandDark border border-brandBorder rounded-lg px-2 py-1.5 text-xs text-neonYellow font-mono focus:outline-none focus:border-neonYellow" />
-          </div>
-          <div>
-            <label class="text-[10px] text-gray-400 uppercase">€ / 100г</label>
-            <input type="number" id="purchasePrice100Input" placeholder="670" step="1" min="0" class="w-full mt-0.5 bg-brandDark border border-brandBorder rounded-lg px-2 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-neonYellow" />
-          </div>
-        </div>
-        <button type="button" onclick="submitPurchaseForm()" class="w-full sm:w-auto px-4 py-1.5 bg-neonYellow/20 hover:bg-neonYellow/30 text-neonYellow border border-neonYellow/40 rounded-lg text-xs font-bold transition">Зберегти закуп</button>
-        <div id="purchaseHistoryList" class="space-y-1 max-h-36 overflow-y-auto text-[11px] text-gray-300">
-          <p class="text-gray-500">Ще немає закупівель</p>
-        </div>
-        <div class="flex justify-between text-[11px] pt-1 border-t border-brandBorder/40">
-          <span class="text-gray-400">Сума закупівель:</span>
-          <span id="totalPurchasesSumLabel" class="font-mono font-bold text-neonYellow">0.00 €</span>
-        </div>
+      <div class="hidden" aria-hidden="true">
+        <div id="expCurrentList"></div><div id="expHistoryList"></div>
+        <div id="purchaseHistoryList"></div><span id="totalPurchasesSumLabel">0</span>
+        <input id="purchaseVarietyInput"/><input id="purchaseGramsInput"/><input id="purchasePrice100Input"/>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1081,7 +1005,7 @@
           <h3 class="text-xs font-bold text-gray-300 uppercase">📅 Витрати за місяць</h3>
           <span class="text-[10px] font-mono text-neonRed" id="expenseMonthChartMeta">—</span>
         </div>
-        <p class="text-[10px] text-gray-500 mb-2">Готівка · карта · закуп сорту — по місяцях (останні 12)</p>
+        <p class="text-[10px] text-gray-500 mb-2">Готівка · карта — по місяцях (останні 12; Обмен у витратах)</p>
         <div class="chart-wrap" style="height:15rem"><canvas id="expenseMonthChart"></canvas></div>
       </div>
     </div>
@@ -1545,7 +1469,7 @@
     let expenseMethodChart = null;
     let expenseMonthChart = null;
 
-    /** Дефолтних категорій немає — лише рядки з таблиці витрат (+ закуп окремо) */
+    /** Дефолтних категорій немає — лише рядки назва сорту + грами (+ закуп окремо) */
     const DEFAULT_EXPENSE_CATEGORIES = [];
     // Combined view used by calculations / archive / forecast
     let parsedRecordsGlobal = [];
@@ -1679,6 +1603,33 @@
     }
 
     /** Dark / Light for whole app (Telegram colorScheme + system fallback) */
+
+    // ===== THEME TOGGLE (dark default) =====
+    function getStoredTheme() {
+      try {
+        const t = localStorage.getItem('h2_theme');
+        if (t === 'light' || t === 'dark') return t;
+      } catch (e) {}
+      return 'dark';
+    }
+    function updateThemeToggleBtn() {
+      const btn = document.getElementById('themeToggleBtn');
+      if (!btn) return;
+      const light = document.documentElement.classList.contains('light');
+      btn.textContent = light ? '☀️ Світла' : '🌙 Темна';
+    }
+    function toggleAppTheme() {
+      const next = document.documentElement.classList.contains('light') ? 'dark' : 'light';
+      applyAppColorScheme(next);
+      try { localStorage.setItem('h2_theme', next); } catch (e) {}
+      updateThemeToggleBtn();
+      try {
+        if (activePage === 'page1') processData();
+        else if (activePage === 'page2') renderArchiveView();
+        else if (activePage === 'page3') renderExpensesView();
+        else if (activePage === 'page4') renderForecastView();
+      } catch (e) {}
+    }
     function applyAppColorScheme(scheme) {
       const mode = scheme === 'light' ? 'light' : 'dark';
       const root = document.documentElement;
@@ -1700,11 +1651,12 @@
     }
 
     function detectPreferredColorScheme() {
+      // 1) явний вибір користувача
       try {
-        const tg = window.Telegram && window.Telegram.WebApp;
-        if (tg && (tg.colorScheme === 'light' || tg.colorScheme === 'dark')) return tg.colorScheme;
+        const saved = localStorage.getItem('h2_theme');
+        if (saved === 'light' || saved === 'dark') return saved;
       } catch (e) {}
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+      // 2) за замовчуванням — темна (не підлаштовуємось під систему, поки користувач не перемкнув)
       return 'dark';
     }
 
@@ -2088,71 +2040,7 @@
 
     /** Форма: сорт + грами + €/100г → історія + склад + каса */
     function submitPurchaseForm() {
-      const varietyEl = document.getElementById('purchaseVarietyInput');
-      const gramsEl = document.getElementById('purchaseGramsInput');
-      const priceEl = document.getElementById('purchasePrice100Input');
-
-      let variety = (varietyEl && varietyEl.value || '').trim().toUpperCase();
-      if (!variety) {
-        const sel = document.getElementById('varietySelect');
-        variety = (sel && sel.value) ? sel.value : '';
-      }
-      if (!variety) {
-        alert('Вкажи назву сорту.');
-        return;
-      }
-
-      const grams = parseFloat(String(gramsEl && gramsEl.value || '').replace(',', '.'));
-      const per100 = parseFloat(String(priceEl && priceEl.value || '').replace(',', '.'));
-      if (isNaN(grams) || grams <= 0) {
-        alert('Вкажи грами (напр. 100).');
-        return;
-      }
-      if (isNaN(per100) || per100 < 0) {
-        alert('Вкажи ціну за 100г (напр. 670).');
-        return;
-      }
-
-      const totalCost = (grams / 100) * per100;
-      const now = new Date();
-      const timeStr =
-        `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()} ` +
-        `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-      const id = `BUY_${variety}_${now.getTime()}`;
-
-      purchaseRecordsMap[id] = {
-        id,
-        variety,
-        grams,
-        pricePer100g: per100,
-        totalCost,
-        timeStr,
-        createdAt: now.toISOString()
-      };
-
-      if (typeof registerVariety === 'function') registerVariety(variety, per100, 0);
-      rebuildPurchasedGramsFromHistory();
-      if (typeof saveGlobalVarieties === 'function') saveGlobalVarieties();
-
-      const sel = document.getElementById('varietySelect');
-      if (sel) {
-        if (typeof populateVarietyDropdown === 'function') populateVarietyDropdown(variety);
-        sel.value = variety;
-        const costInput = document.getElementById('costPer100gInput');
-        const purInput = document.getElementById('purchasedGramsInput');
-        if (costInput) costInput.value = String(per100);
-        if (purInput) purInput.value = String((GLOBAL_VARIETIES[variety] || {}).purchasedGrams || 0);
-      }
-
-      if (typeof recomputeAllRecordsMoney === 'function') recomputeAllRecordsMoney();
-
-      if (varietyEl) varietyEl.value = '';
-      if (gramsEl) gramsEl.value = '';
-      if (priceEl) priceEl.value = '';
-
-      saveUserData();
-      renderPurchaseHistory();
-      processData();
+      alert('Закуп прибрано. Додай рядок «Обмен» у таблицю витрат.');
     }
 
     function updateExpenseCategoryValue(categoryName, valStr) {
@@ -2950,9 +2838,8 @@
         if ((h.method || 'cash') === 'card') card += delta;
         else cash += delta;
       });
-      const pur = typeof getTotalPurchaseSpend === 'function' ? getTotalPurchaseSpend() : 0;
-      cash += pur;
-      return { cash, card, total: cash + card, purchases: pur };
+      // Закуп більше не окремий модуль — «Обмен» у таблиці витрат
+      return { cash, card, total: cash + card, purchases: 0 };
     }
 
     /** Список окремих витрат з таблиці, відсортований за часом (нові зверху) */
@@ -2968,6 +2855,507 @@
       });
       return list;
     }
+
+
+    // ===== PURCHASE FROM EXPENSE NAME: "Super Silver 200" = 200g of variety =====
+    function parsePurchaseFromExpenseName(rawName) {
+      let s = String(rawName || '').trim();
+      if (!s) return null;
+      // strip leading обмен= / обмен / закуп
+      s = s.replace(/^(обмен|obmen|закуп)\s*[:=]?\s*/i, '').trim();
+      // trailing grams: "Super Silver 200" or "BANNAN 200г"
+      const m = s.match(/^(.*?)[\s]+(\d+(?:[.,]\d+)?)\s*(?:г|g|гр|gramm|grams)?\s*$/i);
+      if (!m) {
+        // if exact known variety without grams — not a stock purchase line
+        return null;
+      }
+      const variety = m[1].trim().replace(/\s+/g, ' ');
+      const grams = parseFloat(String(m[2]).replace(',', '.'));
+      if (!variety || !isFinite(grams) || grams <= 0) return null;
+      // ignore if looks like pure money category without variety intent
+      const low = variety.toLowerCase();
+      if (['tabak', 'rewe', 'restaurant', 'оренда', 'логістика'].includes(low)) return null;
+      return { variety: variety.toUpperCase().replace(/\s+/g, ' '), grams, displayName: variety };
+    }
+
+    function expenseKindOf(name) {
+      const p = parsePurchaseFromExpenseName(name);
+      if (p) return 'закуп';
+      const n = String(name || '').trim().toLowerCase();
+      if (n === 'обмен' || n === 'obmen' || n.startsWith('обмен')) return 'закуп';
+      return 'витрата';
+    }
+
+    /** Після розрахунку витрат — синхронізувати склад сортів із закупівель */
+    function syncPurchasesFromExpenseTable() {
+      // reset purchased grams from expense-derived purchases only
+      Object.keys(GLOBAL_VARIETIES || {}).forEach(k => {
+        if (GLOBAL_VARIETIES[k]) GLOBAL_VARIETIES[k]._expPurchaseGrams = 0;
+      });
+      let totalEuro = 0;
+      Object.values(expenseHistoryMap || {}).forEach(h => {
+        const delta = Number(h.delta) || 0;
+        if (delta <= 0) return;
+        const p = parsePurchaseFromExpenseName(h.name);
+        if (!p) return;
+        totalEuro += delta;
+        registerVariety(p.variety, 600, 0);
+        if (!GLOBAL_VARIETIES[p.variety]) GLOBAL_VARIETIES[p.variety] = { costPer100g: 600, purchasedGrams: 0 };
+        GLOBAL_VARIETIES[p.variety]._expPurchaseGrams = (GLOBAL_VARIETIES[p.variety]._expPurchaseGrams || 0) + p.grams;
+      });
+      Object.keys(GLOBAL_VARIETIES || {}).forEach(k => {
+        const g = GLOBAL_VARIETIES[k]._expPurchaseGrams || 0;
+        GLOBAL_VARIETIES[k].purchasedGrams = g;
+      });
+      try { populateVarietyDropdown(); } catch (e) {}
+      try {
+        const el = document.getElementById('totalPurchasesSumLabel');
+        if (el) el.innerText = totalEuro.toFixed(2) + ' €';
+      } catch (e) {}
+      return totalEuro;
+    }
+
+    // ===== COMBINED SUPER TABLE (archive page) =====
+    let superSortKey = 'time';
+    let superSortDir = 'desc';
+
+    function getSuperTableRows() {
+      const rows = [];
+      const deals = (typeof getFilteredArchiveRecords === 'function')
+        ? getFilteredArchiveRecords()
+        : Object.values(archiveRecordsMap || {});
+      deals.forEach(r => {
+        const en = typeof enrichRecord === 'function' ? enrichRecord({ ...r }) : r;
+        const t = (en.parsedDateObj && en.parsedDateObj.getTime && en.parsedDateObj.getTime())
+          || (parseRecordDateTime(en.timeStr || '').getTime()) || 0;
+        const card = Number(en.cardAmount) || 0;
+        const revenue = Number(en.dealRevenue) || 0;
+        const profit = Number(en.dealProfit) || 0;
+        const cost = Number(en.dealCost) || 0;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+        rows.push({
+          kind: 'угода',
+          name: en.category || '',
+          detail: en.clientName || '',
+          baseWeight: Number(en.baseGramm) || 0,
+          weight: Number(en.exactGramm) || 0,
+          cost: cost,
+          amount: revenue,
+          profit: profit,
+          margin: margin,
+          method: card > 0 ? 'карта' : 'готівка',
+          note: en.rawDebtText || (en.bonusGrams ? ('бонус ' + en.bonusGrams + 'г') : ''),
+          timeStr: en.timeStr || '',
+          timeMs: t,
+          highlight: revenue >= 50,
+          _src: 'deal'
+        });
+      });
+
+      const period = currentArchivePeriod || 'all';
+      Object.values(expenseHistoryMap || {}).forEach(h => {
+        const delta = Number(h.delta) || 0;
+        if (delta <= 0) return;
+        let d = h.createdAt ? new Date(h.createdAt) : parseRecordDateTime(h.timeStr || '');
+        if (!(d instanceof Date) || isNaN(d.getTime())) d = new Date(0);
+        if (period !== 'all') {
+          const allA = typeof getArchiveRecordsList === 'function' ? getArchiveRecordsList() : [];
+          const anchor = typeof getArchiveAnchorDate === 'function' ? getArchiveAnchorDate(allA) : new Date();
+          const startOfToday = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+          const endOfDay = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+          let start = null, end = endOfDay;
+          if (period === 'today') start = startOfToday;
+          else if (period === '3days') { start = new Date(startOfToday); start.setDate(start.getDate() - 2); }
+          else if (period === 'week') { start = new Date(startOfToday); start.setDate(start.getDate() - 6); }
+          else if (period === 'month') {
+            start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+            end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
+          }
+          if (start && (d < start || d > end)) return;
+        }
+        const p = parsePurchaseFromExpenseName(h.name);
+        const kind = p ? 'закуп' : 'витрата';
+        const catFilter = typeof getArchiveCategoryFilterValue === 'function' ? getArchiveCategoryFilterValue() : 'ALL';
+        if (catFilter && catFilter !== 'ALL') {
+          if (p && p.variety !== catFilter) return;
+          if (!p) return;
+        }
+        rows.push({
+          kind: kind,
+          name: p ? p.variety : (h.name || ''),
+          detail: p ? (p.grams + ' г') : '—',
+          baseWeight: 0,
+          weight: p ? p.grams : 0,
+          cost: delta,
+          amount: delta,
+          profit: 0,
+          margin: 0,
+          method: h.method === 'card' ? 'карта' : 'готівка',
+          note: p ? 'закуп сорту' : '',
+          timeStr: h.timeStr || '',
+          timeMs: d.getTime(),
+          highlight: false,
+          _src: 'exp'
+        });
+      });
+
+      const q = ((document.getElementById('archiveSearch') || {}).value || '').toLowerCase().trim();
+      let filtered = rows;
+      if (q) {
+        filtered = rows.filter(r =>
+          r.kind.includes(q) || r.name.toLowerCase().includes(q) || r.detail.toLowerCase().includes(q) ||
+          r.method.includes(q) || r.timeStr.toLowerCase().includes(q) || String(r.amount).includes(q) ||
+          (r.note || '').toLowerCase().includes(q)
+        );
+      }
+      const dir = superSortDir === 'asc' ? 1 : -1;
+      const key = superSortKey;
+      filtered.sort((a, b) => {
+        let va = key === 'time' ? a.timeMs : a[key];
+        let vb = key === 'time' ? b.timeMs : b[key];
+        if (typeof va === 'string' || typeof vb === 'string') return dir * String(va || '').localeCompare(String(vb || ''), 'uk');
+        return dir * ((Number(va) || 0) - (Number(vb) || 0));
+      });
+      return filtered;
+    }
+
+    function sortSuperTable(key) {
+      if (superSortKey === key) superSortDir = superSortDir === 'asc' ? 'desc' : 'asc';
+      else {
+        superSortKey = key;
+        superSortDir = (key === 'time' || key === 'amount' || key === 'weight' || key === 'profit' || key === 'cost') ? 'desc' : 'asc';
+      }
+      renderSuperTable();
+    }
+
+    function renderSuperTable() {
+      const tbody = document.getElementById('superTableBody');
+      if (!tbody) return;
+      document.querySelectorAll('#superTable [data-sk]').forEach(el => {
+        const k = el.getAttribute('data-sk');
+        el.textContent = (k === superSortKey) ? (superSortDir === 'asc' ? '▲' : '▼') : '';
+      });
+      const rows = getSuperTableRows();
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-gray-500">Порожньо — розрахуй угоди та витрати</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(r => {
+        const kindCls = r.kind === 'угода' ? 'text-neonGreen' : (r.kind === 'закуп' ? 'text-neonYellow' : 'text-neonRed');
+        const rowCls = r.highlight ? 'bg-neonYellow/10 ring-1 ring-inset ring-neonYellow/40' : 'hover:bg-brandDark/40';
+        const amtCls = r.highlight ? 'text-neonYellow font-black' : 'text-white font-bold';
+        const badge = r.highlight ? '<span class="ml-1 text-[9px] px-1 py-0.5 rounded bg-neonYellow/20 text-neonYellow border border-neonYellow/40">≥50€</span>' : '';
+        const fmt = (n, d) => {
+          if (d === undefined) d = 2;
+          return (n || n === 0) && isFinite(Number(n)) ? Number(n).toFixed(d) : '—';
+        };
+        const note = String(r.note || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        return '<tr class="' + rowCls + ' transition">' +
+          '<td class="p-2 font-bold ' + kindCls + ' whitespace-nowrap">' + r.kind + badge + '</td>' +
+          '<td class="p-2 font-semibold text-gray-200">' + r.name + '</td>' +
+          '<td class="p-2 text-gray-300">' + r.detail + '</td>' +
+          '<td class="p-2 font-mono text-gray-400">' + (r.baseWeight ? fmt(r.baseWeight) : '—') + '</td>' +
+          '<td class="p-2 font-mono text-neonGreen">' + (r.weight ? fmt(r.weight) + ' г' : '—') + '</td>' +
+          '<td class="p-2 font-mono text-neonRed">' + fmt(r.cost) + ' €</td>' +
+          '<td class="p-2 font-mono ' + amtCls + '">' + fmt(r.amount) + ' €</td>' +
+          '<td class="p-2 font-mono text-neonBlue">' + (r.kind === 'угода' ? fmt(r.profit) + ' €' : '—') + '</td>' +
+          '<td class="p-2 font-mono text-neonYellow">' + (r.kind === 'угода' ? fmt(r.margin, 1) + '%' : '—') + '</td>' +
+          '<td class="p-2 font-mono ' + (r.method === 'карта' ? 'text-neonBlue' : 'text-emerald-400') + '">' + r.method + '</td>' +
+          '<td class="p-2 text-[11px] text-gray-400 max-w-[9rem] truncate" title="' + note + '">' + (r.note || '—') + '</td>' +
+          '<td class="p-2 font-mono text-gray-400 whitespace-nowrap">' + r.timeStr + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function renderExpenseSuperTable() { renderSuperTable(); }
+    function filterArchiveMasterTable() { renderSuperTable(); }
+    function renderArchiveMasterTable() { renderSuperTable(); }
+
+    function downloadTextFile(filename, content, mime) {
+      try {
+        const blob = new Blob([content], { type: (mime || 'text/plain;charset=utf-8;') });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        setTimeout(function() {
+          try { a.click(); } catch (e1) {}
+          setTimeout(function() {
+            try { document.body.removeChild(a); } catch (e2) {}
+            try { URL.revokeObjectURL(url); } catch (e3) {}
+          }, 2000);
+        }, 50);
+        return true;
+      } catch (err) {
+        console.error(err);
+        try {
+          // last resort: open in new tab
+          const dataUrl = 'data:' + (mime || 'text/plain') + ',' + encodeURIComponent(content);
+          window.open(dataUrl, '_blank');
+        } catch (e4) {}
+        alert('Не вдалося зберегти файл: ' + (err && err.message ? err.message : String(err)));
+        return false;
+      }
+    }
+    function stampNow() {
+      const n = new Date();
+      return `${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}_${String(n.getHours()).padStart(2,'0')}${String(n.getMinutes()).padStart(2,'0')}`;
+    }
+    function csvEscape(val) {
+      const s = val == null ? '' : String(val);
+      if (/[;"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    }
+
+
+    /** Завантаження текстового/CSV/JSON файлу в textarea угод і перерахунок */
+    function loadDealsFromFile(inputEl) {
+      const file = inputEl && inputEl.files && inputEl.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          let text = String(reader.result || '');
+          const name = (file.name || '').toLowerCase();
+          // JSON session / archive backup
+          if (name.endsWith('.json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
+            const data = JSON.parse(text);
+            if (data && Array.isArray(data.deals)) {
+              // відновити як plain lines у rawInput складно — краще через importArchive
+              if (typeof importArchiveFromFile === 'function') {
+                // synthesize via records map
+                data.deals.forEach(rec => {
+                  const enriched = typeof enrichRecord === 'function' ? enrichRecord(rec) : rec;
+                  if (enriched && enriched.id) archiveRecordsMap[enriched.id] = enriched;
+                });
+                if (data.expenses && Array.isArray(data.expenses)) {
+                  applyExpensesFromRows(data.expenses);
+                }
+                processData();
+                if (typeof renderArchiveView === 'function') renderArchiveView();
+                alert('JSON сесію завантажено (угоди' + (data.expenses ? ' + витрати' : '') + ').');
+                inputEl.value = '';
+                return;
+              }
+            }
+            if (data && Array.isArray(data.records)) {
+              data.records.forEach(rec => {
+                const enriched = typeof enrichRecord === 'function' ? enrichRecord(rec) : rec;
+                if (enriched && enriched.id) archiveRecordsMap[enriched.id] = enriched;
+              });
+              processData();
+              alert('JSON архів завантажено.');
+              inputEl.value = '';
+              return;
+            }
+          }
+          const ta = document.getElementById('rawInput');
+          if (ta) ta.value = text;
+          processData();
+          if (typeof TelegramService !== 'undefined' && TelegramService.haptic) TelegramService.haptic('success');
+        } catch (err) {
+          alert('Помилка файлу угод: ' + (err && err.message ? err.message : String(err)));
+        } finally {
+          inputEl.value = '';
+        }
+      };
+      reader.onerror = () => { alert('Не вдалося прочитати файл.'); inputEl.value = ''; };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    /** Завантаження файлу витрат (текст таблиці / CSV / JSON) */
+    function loadExpensesFromFile(inputEl) {
+      const file = inputEl && inputEl.files && inputEl.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          let text = String(reader.result || '');
+          const name = (file.name || '').toLowerCase();
+          if (name.endsWith('.json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
+            const data = JSON.parse(text);
+            const rows = Array.isArray(data) ? data : (data.expenses || data.records || []);
+            if (!rows.length) throw new Error('У JSON немає витрат.');
+            applyExpensesFromRows(rows);
+            renderExpensesView();
+            processData();
+            alert('Витрати з JSON: ' + rows.length);
+            inputEl.value = '';
+            return;
+          }
+          // CSV з нашими заголовками → у plain table text
+          if (name.endsWith('.csv') || text.includes(';')) {
+            text = csvExpensesToTableText(text);
+          }
+          const ta = document.getElementById('rawExpenseInput');
+          if (ta) ta.value = text;
+          processExpenseBulk();
+        } catch (err) {
+          alert('Помилка файлу витрат: ' + (err && err.message ? err.message : String(err)));
+        } finally {
+          inputEl.value = '';
+        }
+      };
+      reader.onerror = () => { alert('Не вдалося прочитати файл.'); inputEl.value = ''; };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    /** Універсальне завантаження сесії (з супер-таблиці) */
+    function loadSessionFromFile(inputEl) {
+      const file = inputEl && inputEl.files && inputEl.files[0];
+      if (!file) return;
+      const name = (file.name || '').toLowerCase();
+      // JSON combined → deals loader; text/csv expenses-looking → expenses
+      if (name.endsWith('.json')) {
+        loadDealsFromFile(inputEl);
+        return;
+      }
+      // heuristic: if first lines look like expense headers
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || '');
+        const head = text.slice(0, 200).toLowerCase();
+        if (head.includes('витрат') || head.includes('name') && head.includes('€') || head.includes('обмен') || head.includes('назва')) {
+          // put into expense input
+          const fake = { files: [file], value: '' };
+          // re-read is wasteful — inline:
+          try {
+            let body = text;
+            if (name.endsWith('.csv') || text.includes(';')) body = csvExpensesToTableText(text);
+            const ta = document.getElementById('rawExpenseInput');
+            if (ta) ta.value = body;
+            processExpenseBulk();
+          } catch (err) {
+            alert('Помилка: ' + (err && err.message ? err.message : String(err)));
+          }
+          inputEl.value = '';
+          return;
+        }
+        const ta = document.getElementById('rawInput');
+        if (ta) ta.value = text;
+        processData();
+        inputEl.value = '';
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function applyExpensesFromRows(rows) {
+      expenseCurrentMap = {};
+      expenseHistoryMap = {};
+      customExpenseCategories = {};
+      (rows || []).forEach((r, i) => {
+        const name = r.name || r.Назва || r.category || '';
+        const amount = Number(r.amount != null ? r.amount : (r['Сума €'] != null ? r['Сума €'] : r.delta)) || 0;
+        let method = r.method || 'cash';
+        if (r.methodLabel === 'карта' || r.Оплата === 'карта') method = 'card';
+        if (method !== 'card') method = 'cash';
+        const timeStr = r.timeStr || r.Час || r.time || '';
+        if (name && amount > 0) applyExpenseTransaction(name, amount, method, timeStr);
+      });
+      rebuildLegacyExpenseCategories();
+    }
+
+    function csvExpensesToTableText(csv) {
+      let raw = String(csv).replace(/^\uFEFF/, '');
+      const lines = raw.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return raw;
+      const delim = lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+      const idxName = headers.findIndex(h => ['назва','name','сорт'].includes(h));
+      const idxAmt = headers.findIndex(h => h.includes('сум') || h.includes('€') || h === 'amount');
+      const idxTime = headers.findIndex(h => h.includes('час') || h === 'time' || h.includes('дат'));
+      const idxPay = headers.findIndex(h => h.includes('оплат') || h === 'method');
+      const out = ['Витрати', 'name', '€', 'time'];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
+        let name = idxName >= 0 ? cols[idxName] : cols[0];
+        const amt = idxAmt >= 0 ? cols[idxAmt] : cols[1];
+        const time = idxTime >= 0 ? cols[idxTime] : (cols[4] || cols[2] || '');
+        const pay = idxPay >= 0 ? cols[idxPay] : '';
+        if (pay && /карта|card/i.test(pay) && name && !/karte|карта|card/i.test(name)) name = name + ' Karte';
+        if (!name) continue;
+        out.push(name, String(amt || '0').replace(',', '.'), time || '');
+      }
+      return out.join('\n');
+    }
+
+
+    function exportExpensesToCSV() {
+      try {
+        const rows = getSuperTableRows().filter(r => r._src === 'exp');
+        if (!rows.length) { alert('Немає витрат для експорту.'); return; }
+        const headers = ['Тип','Назва','Сума €','Оплата','Вага_г','Час'];
+        const lines = rows.map(r => [r.kind, r.name, Number(r.amount).toFixed(2), r.method, r.weight || '', r.timeStr].map(csvEscape).join(';'));
+        downloadTextFile('h2_expenses_' + stampNow() + '.csv', String.fromCharCode(0xFEFF) + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10)), 'text/csv;charset=utf-8;');
+      } catch (err) {
+        alert('Помилка експорту витрат: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    function exportCombinedSessionToCSV() {
+      try {
+        const rows = getSuperTableRows();
+        if (!rows.length) { alert('Немає даних сесії для експорту.'); return; }
+        const headers = ['Тип','Сорт/Назва','Клієнт','База_г','Точна_г','Cost_€','Сума_€','Прибуток_€','Маржа_%','Оплата','Нотатка','Час'];
+        const lines = rows.map(r => [
+          r.kind, r.name, r.detail,
+          r.baseWeight ? Number(r.baseWeight).toFixed(2) : '',
+          r.weight ? Number(r.weight).toFixed(2) : '',
+          Number(r.cost || 0).toFixed(2),
+          Number(r.amount || 0).toFixed(2),
+          r.kind === 'угода' ? Number(r.profit || 0).toFixed(2) : '',
+          r.kind === 'угода' ? Number(r.margin || 0).toFixed(1) : '',
+          r.method, r.note || '', r.timeStr || ''
+        ].map(csvEscape).join(';'));
+        const bom = String.fromCharCode(0xFEFF);
+        downloadTextFile('h2_super_' + stampNow() + '.csv', bom + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10)), 'text/csv;charset=utf-8;');
+      } catch (err) {
+        console.error(err);
+        alert('Помилка CSV: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    function exportCombinedSessionToJSON() {
+      try {
+        const deals = Object.values(archiveRecordsMap || {}).map(r => {
+          const en = enrichRecord({ ...r });
+          const { parsedDateObj, ...rest } = en;
+          return rest;
+        });
+        const expenses = Object.values(expenseHistoryMap || {}).map(h => ({
+          id: h.id,
+          name: h.name,
+          amount: Number(h.delta) || Number(h.newAmount) || 0,
+          method: h.method === 'card' ? 'card' : 'cash',
+          timeStr: h.timeStr || '',
+          kind: (typeof parsePurchaseFromExpenseName === 'function' && parsePurchaseFromExpenseName(h.name)) ? 'закуп' : 'витрата',
+          purchase: (typeof parsePurchaseFromExpenseName === 'function') ? parsePurchaseFromExpenseName(h.name) : null
+        }));
+        const payload = {
+          version: 3,
+          exportedAt: new Date().toISOString(),
+          app: 'H2 Engine session',
+          deals: deals,
+          expenses: expenses,
+          superRows: getSuperTableRows()
+        };
+        downloadTextFile('h2_session_' + stampNow() + '.json', JSON.stringify(payload, null, 2), 'application/json;charset=utf-8;');
+      } catch (err) {
+        console.error(err);
+        alert('Помилка JSON: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    // Archive master sort
+    function sortArchiveMaster(key) {
+      if (archiveSortKey === key) archiveSortDir = archiveSortDir === 'asc' ? 'desc' : 'asc';
+      else { archiveSortKey = key; archiveSortDir = 'asc'; }
+      renderArchiveMasterTable();
+    }
+
 
     /**
      * Сума витрат (Δ з історії) за період архіву.
@@ -3017,6 +3405,38 @@
     }
 
     /** Денні витрати (Δ>0) для графіків архіву */
+
+    function sumObmenInPeriod(period, allArchive) {
+      const hist = Object.values(expenseHistoryMap || {});
+      let sum = 0;
+      const p = period || 'all';
+      let start = null, end = null;
+      if (p !== 'all') {
+        const anchor = typeof getArchiveAnchorDate === 'function'
+          ? getArchiveAnchorDate(allArchive && allArchive.length ? allArchive : [])
+          : new Date();
+        const startOfToday = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+        const endOfDay = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+        if (p === 'today') { start = startOfToday; end = endOfDay; }
+        else if (p === '3days') { start = new Date(startOfToday); start.setDate(start.getDate() - 2); end = endOfDay; }
+        else if (p === 'week') { start = new Date(startOfToday); start.setDate(start.getDate() - 6); end = endOfDay; }
+        else if (p === 'month') {
+          start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+          end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
+        }
+      }
+      hist.forEach(h => {
+        const delta = Number(h.delta);
+        if (!isFinite(delta) || delta <= 0) return;
+        if (!parsePurchaseFromExpenseName(h.name)) return;
+        let d = h.createdAt ? new Date(h.createdAt) : parseRecordDateTime(h.timeStr || '');
+        if (!(d instanceof Date) || isNaN(d.getTime())) return;
+        if (start && end && (d < start || d > end)) return;
+        sum += delta;
+      });
+      return sum;
+    }
+
     function getExpenseDailySeries() {
       const byDay = {};
       Object.values(expenseHistoryMap || {}).forEach(h => {
@@ -3328,8 +3748,10 @@
       });
 
       rebuildLegacyExpenseCategories();
+      syncPurchasesFromExpenseTable();
       renderExpensesView();
       processData();
+      if (typeof renderSuperTable === "function") renderSuperTable();
       if (typeof renderArchiveView === 'function' && activePage === 'page2') renderArchiveView();
 
       const msg = `Витрат (окремих): ${ok}\nГотівка: ${cashSum.toFixed(2)} €\nКарта: ${cardSum.toFixed(2)} €\n(без накладання, за часом)`;
@@ -3552,8 +3974,8 @@
         }
       }
 
+      renderExpenseSuperTable();
       renderExpenseCharts();
-      try { renderPurchaseHistory(); } catch (e) {}
     }
 
     function renderExpenseCharts() {
@@ -3818,6 +4240,9 @@
         const enriched = enrichRecord(rec);
         archiveRecordsMap[enriched.id] = enriched;
       });
+
+      // синхрон закупівель зі складу (з витрат типу «Super Silver 200»)
+      try { if (typeof syncPurchasesFromExpenseTable === 'function') syncPurchasesFromExpenseTable(); } catch (e) {}
 
       // Дашборд і архів рахують угоди поточної сесії (з таблиці)
       parsedRecordsGlobal = Object.values(archiveRecordsMap).map(r => {
@@ -4741,9 +5166,9 @@
       }
       const purCost = filteredPurchases.reduce((s, p) => s + (Number(p.totalCost) || 0), 0);
       const purGrams = filteredPurchases.reduce((s, p) => s + (Number(p.grams) || 0), 0);
-      setTxt('archKpiPurchases', `${purCost.toFixed(2)} €`);
-      setTxt('archKpiPurchaseGrams', `${purGrams.toFixed(0)} г`);
-      setTxt('archPurchaseCountLabel', `${filteredPurchases.length} записів`);
+      // Обмен з витрат періоду
+      const obmenSum = (typeof sumObmenInPeriod === 'function') ? sumObmenInPeriod(period, allArchive) : 0;
+      setTxt('archKpiPurchases', `${obmenSum.toFixed(2)} €`);
 
       // Витрати за тим самим періодом (з історії Δ > 0 = реальні трати)
       const periodExp = getFilteredExpenseTotalsForPeriod(period, allArchive);
@@ -4824,8 +5249,8 @@
       } catch (e) { console.warn('archive stats', e); }
 
       renderArchiveCharts(records);
-      renderVarietyTables(records);
-      renderArchiveMasterTable(records);
+      try { renderVarietyTables(records); } catch(e) {}
+      renderSuperTable();
     }
 
     function renderArchiveCharts(records) {
@@ -5092,82 +5517,7 @@
       }
     }
 
-    function renderVarietyTables(records) {
-      const container = document.getElementById('varietyTablesContainer');
-      const selectFilter = document.getElementById('archiveVarietyFilter');
-
-      const byVariety = {};
-      records.forEach(r => {
-        if (!byVariety[r.category]) byVariety[r.category] = [];
-        byVariety[r.category].push(r);
-      });
-
-      const varieties = Object.keys(byVariety);
-      document.getElementById('varietyTablesCount').innerText = `Знайдено сортів: ${varieties.length}`;
-
-      // опції категорій оновлює populateArchiveCategoryFilters у renderArchiveView
-
-      if (varieties.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-xs">Немає угод в даному періоді</p>';
-        return;
-      }
-
-      container.innerHTML = varieties.map(varName => {
-        const varRecords = byVariety[varName];
-        const style = getCategoryStyle(varName);
-
-        let totalExact = 0, totalRev = 0, totalProf = 0;
-        varRecords.forEach(r => {
-          totalExact += r.exactGramm || 0;
-          totalRev += r.dealRevenue || 0;
-          totalProf += r.dealProfit || 0;
-        });
-
-        const rowsHtml = varRecords.map(r => `
-          <tr class="hover:bg-brandDark/40 transition">
-            <td class="p-2.5 font-semibold text-gray-200">${r.clientName}</td>
-            <td class="p-2.5 font-mono text-gray-400">${r.baseGramm.toFixed(2)} г</td>
-            <td class="p-2.5 font-mono font-bold text-neonGreen">${r.exactGramm.toFixed(2)} г</td>
-            <td class="p-2.5 font-mono text-white">${r.dealRevenue.toFixed(2)} €</td>
-            <td class="p-2.5 font-mono text-neonBlue">${r.dealProfit.toFixed(2)} €</td>
-            <td class="p-2.5 font-mono text-neonYellow">${r.marginPct.toFixed(1)}%</td>
-            <td class="p-2.5 font-mono text-gray-400 text-[11px]">${r.timeStr}</td>
-          </tr>
-        `).join('');
-
-        return `
-          <div class="bg-brandCard/90 p-4 rounded-2xl neon-border space-y-3">
-            <div class="flex justify-between items-center flex-wrap gap-2 border-b border-brandBorder pb-2">
-              <span class="px-3 py-1 rounded-lg text-xs font-bold font-mono" style="background: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}60;">
-                🌿 СОРТ: ${varName} (${varRecords.length} угод)
-              </span>
-              <div class="flex items-center gap-4 text-xs font-mono">
-                <span class="text-gray-400">Вага: <b class="text-neonGreen">${totalExact.toFixed(2)}г</b></span>
-                <span class="text-gray-400">Виручка: <b class="text-white">${totalRev.toFixed(2)}€</b></span>
-                <span class="text-gray-400">Прибуток: <b class="text-neonBlue">${totalProf.toFixed(2)}€</b></span>
-              </div>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs text-gray-300">
-                <thead class="bg-brandDark/90 text-gray-400 uppercase text-[9px]">
-                  <tr>
-                    <th class="p-2.5">Клієнт</th>
-                    <th class="p-2.5">Базова вага</th>
-                    <th class="p-2.5 text-neonGreen">Точна вага</th>
-                    <th class="p-2.5 text-white">Виручка (€)</th>
-                    <th class="p-2.5 text-neonBlue">Прибуток (€)</th>
-                    <th class="p-2.5 text-neonYellow">% Маржі</th>
-                    <th class="p-2.5">Час</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-brandBorder/50">${rowsHtml}</tbody>
-              </table>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
+    function renderVarietyTables(records) { /* removed: single master table only */ }
 
     function renderArchiveMasterTable(records = getFilteredArchiveRecords()) {
       const tbody = document.getElementById('archiveMasterTableBody');
@@ -5180,10 +5530,26 @@
       }
       if (searchVal) {
         filtered = filtered.filter(r => 
-          r.clientName.toLowerCase().includes(searchVal) ||
-          r.category.toLowerCase().includes(searchVal) ||
-          r.timeStr.toLowerCase().includes(searchVal)
+          (r.clientName || '').toLowerCase().includes(searchVal) ||
+          (r.category || '').toLowerCase().includes(searchVal) ||
+          (r.timeStr || '').toLowerCase().includes(searchVal)
         );
+      }
+
+      // сортування за стовпчиком
+      if (typeof archiveSortKey === 'string' && archiveSortKey) {
+        const dir = archiveSortDir === 'asc' ? 1 : -1;
+        const key = archiveSortKey;
+        filtered = filtered.slice().sort((a, b) => {
+          let va = a[key];
+          let vb = b[key];
+          if (key === 'timeStr') {
+            va = (a.parsedDateObj && a.parsedDateObj.getTime && a.parsedDateObj.getTime()) || parseRecordDateTime(a.timeStr || '').getTime() || 0;
+            vb = (b.parsedDateObj && b.parsedDateObj.getTime && b.parsedDateObj.getTime()) || parseRecordDateTime(b.timeStr || '').getTime() || 0;
+          }
+          if (typeof va === 'string' || typeof vb === 'string') return dir * String(va || '').localeCompare(String(vb || ''), 'uk');
+          return dir * ((Number(va) || 0) - (Number(vb) || 0));
+        });
       }
 
       if (filtered.length === 0) {
@@ -6306,6 +6672,7 @@
     // INIT ON LOAD
     window.addEventListener('DOMContentLoaded', () => {
       applyTelegramThemeGlass();
+      updateThemeToggleBtn();
       loadChartPrecision();
       loadGlobalVarieties();
       initTelegramAuth();
