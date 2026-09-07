@@ -9,6 +9,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <script>
@@ -865,7 +867,7 @@
         <div class="flex justify-between items-center flex-wrap gap-3">
           <div>
             <h2 class="text-sm font-bold tracking-wider uppercase text-gray-200">🗄️ Супер-таблиця</h2>
-            <p class="text-[11px] text-gray-400">Угоди + витрати · cost/маржа/борг · жовтое ≥50€ · закуп: Super Silver 200</p>
+            <p class="text-[11px] text-gray-400">Угоди + витрати · ≥50€ · закуп: Super Silver 200 · обмін лише через PDF</p>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <select id="archiveVarietyFilter" onchange="onArchiveCategoryFilterChange()" class="px-2.5 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-neonGreen focus:outline-none">
@@ -873,11 +875,10 @@
             </select>
             <input type="text" id="archiveSearch" onkeyup="renderSuperTable()" placeholder="Пошук..." class="px-3 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-gray-200 focus:outline-none">
             <label class="px-3 py-1.5 bg-neonPurple/15 hover:bg-neonPurple/25 text-neonPurple border border-neonPurple/40 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1">
-              📂 Завантажити
-              <input type="file" id="sessionFileInput" accept=".txt,.csv,.json,text/plain,text/csv,application/json" class="hidden" onchange="loadSessionFromFile(this)" />
+              📂 PDF
+              <input type="file" id="sessionFileInput" accept="application/pdf,.pdf" class="hidden" onchange="loadSessionFromPdf(this)" />
             </label>
-            <button type="button" onclick="exportCombinedSessionToCSV()" class="px-3 py-1.5 bg-neonGreen/15 hover:bg-neonGreen/25 text-neonGreen border border-neonGreen/40 rounded-lg text-xs font-bold transition">📥 CSV</button>
-            <button type="button" onclick="exportCombinedSessionToJSON()" class="px-3 py-1.5 bg-neonBlue/15 hover:bg-neonBlue/25 text-neonBlue border border-neonBlue/40 rounded-lg text-xs font-bold transition">💾 JSON</button>
+            <button type="button" onclick="exportSessionToPdf()" class="px-3 py-1.5 bg-neonGreen/15 hover:bg-neonGreen/25 text-neonGreen border border-neonGreen/40 rounded-lg text-xs font-bold transition">📥 PDF</button>
             <button type="button" onclick="clearArchive()" class="px-3 py-1.5 bg-neonRed/15 hover:bg-neonRed/25 text-neonRed border border-neonRed/40 rounded-lg text-xs font-bold transition">🗑 Сесія</button>
           </div>
         </div>
@@ -3393,180 +3394,301 @@
       return out.join('\n');
     }
 
-    /** Єдине завантаження файлу для супер-таблиці: JSON / CSV / текст */
-    function loadSessionFromFile(inputEl) {
+
+    // ===== PDF EXPORT / IMPORT (iOS · Android · Windows) =====
+
+    function utf8ToBase64(str) {
+      const bytes = new TextEncoder().encode(str);
+      let bin = '';
+      bytes.forEach(b => { bin += String.fromCharCode(b); });
+      return btoa(bin);
+    }
+
+    function base64ToUtf8(b64) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    }
+
+    function buildSessionPayload() {
+      const deals = Object.values(archiveRecordsMap || {}).map(function (r) {
+        const en = enrichRecord({ ...r });
+        const copy = { ...en };
+        delete copy.parsedDateObj;
+        return copy;
+      });
+      const expenses = Object.values(expenseHistoryMap || {}).map(function (h) {
+        return {
+          id: h.id,
+          name: h.name,
+          amount: Number(h.delta) || Number(h.newAmount) || 0,
+          method: h.method === 'card' ? 'card' : 'cash',
+          timeStr: h.timeStr || '',
+          kind: (typeof parsePurchaseFromExpenseName === 'function' && parsePurchaseFromExpenseName(h.name)) ? 'закуп' : 'витрата',
+          purchase: (typeof parsePurchaseFromExpenseName === 'function') ? parsePurchaseFromExpenseName(h.name) : null
+        };
+      });
+      return {
+        magic: 'H2_ENGINE_SESSION',
+        version: 5,
+        exportedAt: new Date().toISOString(),
+        app: 'H2 Engine',
+        deals: deals,
+        expenses: expenses
+      };
+    }
+
+    /** Зберегти Blob PDF так, щоб працювало на iPhone / Android / Windows */
+    async function savePdfBlob(blob, filename) {
+      const file = new File([blob], filename, { type: 'application/pdf' });
+
+      // 1) Web Share (найкраще для iPhone / Android)
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'H2 сесія',
+            text: filename
+          });
+          return 'share';
+        }
+      } catch (e) {
+        // user cancelled share → try download
+        if (e && e.name === 'AbortError') return 'cancelled';
+      }
+
+      // 2) Класичне завантаження (Windows / Android Chrome)
+      try {
+        if (typeof navigator !== 'undefined' && navigator.msSaveOrOpenBlob) {
+          navigator.msSaveOrOpenBlob(blob, filename);
+          return 'msie';
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          try { document.body.removeChild(a); } catch (e) {}
+          try { URL.revokeObjectURL(url); } catch (e) {}
+        }, 3000);
+        return 'download';
+      } catch (e2) {
+        console.error(e2);
+      }
+
+      // 3) Відкрити PDF у новій вкладці (iOS Safari fallback — «Поділитись → Зберегти в Файли»)
+      try {
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        if (!win) {
+          // popup blocked — navigate same tab
+          window.location.href = url;
+        }
+        setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 60000);
+        alert('PDF відкрито. На iPhone: Поділитись → Зберегти у Файли.');
+        return 'open';
+      } catch (e3) {
+        alert('Не вдалося зберегти PDF: ' + (e3 && e3.message ? e3.message : String(e3)));
+        return 'fail';
+      }
+    }
+
+    async function exportSessionToPdf() {
+      try {
+        const payload = buildSessionPayload();
+        if (!payload.deals.length && !payload.expenses.length) {
+          alert('Немає даних сесії для PDF.\nСпочатку розрахуй угоди та витрати.');
+          return;
+        }
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          alert('Бібліотека PDF не завантажилась. Перевір інтернет і онови сторінку.');
+          return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        const margin = 40;
+        let y = margin;
+        const pageH = doc.internal.pageSize.getHeight();
+        const pageW = doc.internal.pageSize.getWidth();
+        const maxW = pageW - margin * 2;
+
+        function ensureSpace(need) {
+          if (y + need > pageH - margin) {
+            doc.addPage();
+            y = margin;
+          }
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('H2 Engine — Session Archive', margin, y);
+        y += 22;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text('Exported: ' + new Date().toLocaleString(), margin, y);
+        y += 14;
+        doc.text('Deals: ' + payload.deals.length + '   Expenses: ' + payload.expenses.length, margin, y);
+        y += 20;
+
+        // Human-readable deals
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('DEALS', margin, y);
+        y += 16;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        payload.deals.forEach(function (d, i) {
+          const line = (i + 1) + '. ' + (d.category || '') + ' | ' + (d.clientName || '') + ' | '
+            + (Number(d.exactGramm || 0).toFixed(2)) + 'g | '
+            + (Number(d.dealRevenue || 0).toFixed(2)) + ' EUR | '
+            + (d.timeStr || '');
+          ensureSpace(12);
+          doc.text(line.substring(0, 110), margin, y);
+          y += 11;
+        });
+
+        y += 10;
+        ensureSpace(20);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('EXPENSES', margin, y);
+        y += 16;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        payload.expenses.forEach(function (e, i) {
+          const line = (i + 1) + '. ' + (e.name || '') + ' | '
+            + (Number(e.amount || 0).toFixed(2)) + ' EUR | '
+            + (e.method || 'cash') + ' | ' + (e.timeStr || '');
+          ensureSpace(12);
+          doc.text(line.substring(0, 110), margin, y);
+          y += 11;
+        });
+
+        // Machine-readable payload (chunked)
+        const b64 = utf8ToBase64(JSON.stringify(payload));
+        const markerStart = 'H2_SESSION_B64_START';
+        const markerEnd = 'H2_SESSION_B64_END';
+        ensureSpace(40);
+        y += 16;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('MACHINE DATA (do not edit) — needed for import', margin, y);
+        y += 12;
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(6);
+        doc.text(markerStart, margin, y);
+        y += 9;
+        const chunkSize = 90;
+        for (let i = 0; i < b64.length; i += chunkSize) {
+          ensureSpace(9);
+          doc.text(b64.substring(i, i + chunkSize), margin, y);
+          y += 8;
+        }
+        ensureSpace(10);
+        doc.text(markerEnd, margin, y);
+
+        const blob = doc.output('blob');
+        const filename = 'h2_session_' + stampNow() + '.pdf';
+        const mode = await savePdfBlob(blob, filename);
+        if (mode === 'share' || mode === 'download' || mode === 'open' || mode === 'msie') {
+          if (typeof TelegramService !== 'undefined' && TelegramService.haptic) {
+            try { TelegramService.haptic('success'); } catch (e) {}
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Помилка PDF: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    async function loadSessionFromPdf(inputEl) {
       const file = inputEl && inputEl.files && inputEl.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function () {
+      try {
+        if (!window.pdfjsLib) {
+          alert('PDF-читач не завантажився. Перевір інтернет і онови сторінку.');
+          return;
+        }
+        // worker
         try {
-          const textContent = String(reader.result || '');
-          const fname = (file.name || '').toLowerCase();
-          const trimmed = textContent.trim();
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        } catch (e) {}
 
-          // --- JSON session ---
-          if (fname.endsWith('.json') || trimmed.startsWith('{') || trimmed.startsWith('[')) {
-            const data = JSON.parse(textContent);
-            if (data && (Array.isArray(data.deals) || Array.isArray(data.expenses) || Array.isArray(data.records))) {
-              const deals = Array.isArray(data.deals) ? data.deals
-                : (Array.isArray(data.records) ? data.records : []);
-              const expenses = Array.isArray(data.expenses) ? data.expenses : [];
-              applySessionDeals(deals);
-              if (expenses.length) applyExpensesFromRows(expenses);
-              else if (typeof clearSessionExpenses === 'function') {
-                // keep expenses only if file had none? replace policy: if key missing, keep; if [] clear
-                if (Object.prototype.hasOwnProperty.call(data, 'expenses')) applyExpensesFromRows([]);
-              }
-              refreshSessionUIFromMaps();
-              alert('Завантажено JSON сесію.\nУгод: ' + deals.length + '\nВитрат: ' + expenses.length);
-              return;
-            }
-            if (Array.isArray(data)) {
-              // array of mixed or deals
-              applySessionDeals(data);
-              refreshSessionUIFromMaps();
-              alert('Завантажено масив записів: ' + data.length);
-              return;
-            }
-            throw new Error('Невідомий формат JSON');
-          }
-
-          // --- CSV (супер-таблиця або витрати) ---
-          if (fname.endsWith('.csv') || textContent.indexOf(';') >= 0) {
-            const head = textContent.slice(0, 280).toLowerCase();
-            if (head.indexOf('тип') >= 0 || head.indexOf('угод') >= 0 || head.indexOf('витрат') >= 0) {
-              const parsed = importSuperCsvText(textContent);
-              applySessionDeals(parsed.deals);
-              applyExpensesFromRows(parsed.expenses);
-              refreshSessionUIFromMaps();
-              alert('CSV супер-таблицю завантажено.\nУгод: ' + parsed.deals.length + '\nВитрат: ' + parsed.expenses.length);
-              return;
-            }
-            // expenses-only csv
-            const body = csvExpensesToTableText(textContent);
-            const ta = document.getElementById('rawExpenseInput');
-            if (ta) ta.value = body;
-            processExpenseBulk();
-            return;
-          }
-
-          // --- plain text journal ---
-          const ta = document.getElementById('rawInput');
-          if (ta) ta.value = textContent;
-          processData();
-          if (typeof renderSuperTable === 'function') renderSuperTable();
-          alert('Текст журналу завантажено і розраховано.');
-        } catch (err) {
-          console.error(err);
-          alert('Помилка завантаження: ' + (err && err.message ? err.message : String(err)));
-        } finally {
-          try { inputEl.value = ''; } catch (e) {}
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const strings = content.items.map(function (it) { return it.str || ''; });
+          fullText += strings.join('') + '\n';
         }
-      };
-      reader.onerror = function () {
-        alert('Не вдалося прочитати файл.');
+
+        const startTag = 'H2_SESSION_B64_START';
+        const endTag = 'H2_SESSION_B64_END';
+        let i0 = fullText.indexOf(startTag);
+        let i1 = fullText.indexOf(endTag);
+        if (i0 < 0 || i1 < 0 || i1 <= i0) {
+          // try with spaces/newlines stripped variants
+          const compact = fullText.replace(/\s+/g, '');
+          i0 = compact.indexOf(startTag);
+          i1 = compact.indexOf(endTag);
+          if (i0 < 0 || i1 < 0 || i1 <= i0) {
+            throw new Error('Це не H2 PDF-сесія (немає блоку даних). Експортуй PDF знову з додатку.');
+          }
+          const b64c = compact.substring(i0 + startTag.length, i1);
+          const json = base64ToUtf8(b64c);
+          const data = JSON.parse(json);
+          applyImportedSession(data);
+          return;
+        }
+        // Extract base64 between tags (remove whitespace)
+        let b64 = fullText.substring(i0 + startTag.length, i1).replace(/\s+/g, '');
+        const json = base64ToUtf8(b64);
+        const data = JSON.parse(json);
+        applyImportedSession(data);
+      } catch (err) {
+        console.error(err);
+        alert('Помилка імпорту PDF: ' + (err && err.message ? err.message : String(err)));
+      } finally {
         try { inputEl.value = ''; } catch (e) {}
-      };
-      reader.readAsText(file, 'UTF-8');
+      }
     }
 
-    // aliases
-    function loadDealsFromFile(inputEl) { loadSessionFromFile(inputEl); }
-    function loadExpensesFromFile(inputEl) { loadSessionFromFile(inputEl); }
-
-    function exportCombinedSessionToCSV() {
-      try {
-        // ВЕСЬ архів, не тільки відфільтрований період
-        const rows = getFullArchiveSuperRows();
-        if (!rows.length) {
-          alert('Немає даних сесії для експорту.\nСпочатку розрахуй угоди та витрати.');
-          return;
+    function applyImportedSession(data) {
+      if (!data || data.magic !== 'H2_ENGINE_SESSION') {
+        // tolerate older payloads without magic if deals/expenses present
+        if (!(data && (Array.isArray(data.deals) || Array.isArray(data.expenses)))) {
+          throw new Error('Невірний формат сесії в PDF');
         }
-        const headers = ['Тип', 'Сорт/Назва', 'Клієнт', 'База_г', 'Точна_г', 'Cost_€', 'Сума_€', 'Прибуток_€', 'Маржа_%', 'Оплата', 'Нотатка', 'Час'];
-        const lines = rows.map(function (r) {
-          return [
-            r.kind,
-            r.name,
-            r.detail,
-            r.baseWeight ? Number(r.baseWeight).toFixed(2) : '',
-            r.weight ? Number(r.weight).toFixed(2) : '',
-            Number(r.cost || 0).toFixed(2),
-            Number(r.amount || 0).toFixed(2),
-            r.kind === 'угода' ? Number(r.profit || 0).toFixed(2) : '',
-            r.kind === 'угода' ? Number(r.margin || 0).toFixed(1) : '',
-            r.method,
-            r.note || '',
-            r.timeStr || ''
-          ].map(csvEscape).join(';');
-        });
-        const bom = String.fromCharCode(0xFEFF);
-        const body = bom + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10));
-        downloadTextFile('h2_super_full_' + stampNow() + '.csv', body, 'text/csv;charset=utf-8;');
-      } catch (err) {
-        console.error(err);
-        alert('Помилка CSV: ' + (err && err.message ? err.message : String(err)));
+      }
+      const deals = Array.isArray(data.deals) ? data.deals : [];
+      const expenses = Array.isArray(data.expenses) ? data.expenses : [];
+      applySessionDeals(deals);
+      applyExpensesFromRows(expenses);
+      refreshSessionUIFromMaps();
+      alert('PDF-сесію завантажено.\\nУгод: ' + deals.length + '\\nВитрат: ' + expenses.length);
+      if (typeof TelegramService !== 'undefined' && TelegramService.haptic) {
+        try { TelegramService.haptic('success'); } catch (e) {}
       }
     }
 
-    function exportCombinedSessionToJSON() {
-      try {
-        const deals = Object.values(archiveRecordsMap || {}).map(function (r) {
-          const en = enrichRecord({ ...r });
-          const copy = { ...en };
-          delete copy.parsedDateObj;
-          return copy;
-        });
-        const expenses = Object.values(expenseHistoryMap || {}).map(function (h) {
-          return {
-            id: h.id,
-            name: h.name,
-            amount: Number(h.delta) || Number(h.newAmount) || 0,
-            method: h.method === 'card' ? 'card' : 'cash',
-            timeStr: h.timeStr || '',
-            kind: (typeof parsePurchaseFromExpenseName === 'function' && parsePurchaseFromExpenseName(h.name)) ? 'закуп' : 'витрата',
-            purchase: (typeof parsePurchaseFromExpenseName === 'function') ? parsePurchaseFromExpenseName(h.name) : null
-          };
-        });
-        if (!deals.length && !expenses.length) {
-          alert('Немає даних сесії для експорту.');
-          return;
-        }
-        const payload = {
-          version: 4,
-          exportedAt: new Date().toISOString(),
-          app: 'H2 Engine session',
-          deals: deals,
-          expenses: expenses
-        };
-        downloadTextFile(
-          'h2_session_full_' + stampNow() + '.json',
-          JSON.stringify(payload, null, 2),
-          'application/json;charset=utf-8;'
-        );
-      } catch (err) {
-        console.error(err);
-        alert('Помилка JSON: ' + (err && err.message ? err.message : String(err)));
-      }
+    // stubs: CSV/JSON removed
+    function loadSessionFromFile(inputEl) {
+      alert('CSV/JSON вимкнено. Використовуй PDF.');
+      try { inputEl.value = ''; } catch (e) {}
     }
-
-    function exportExpensesToCSV() {
-      try {
-        const rows = getFullArchiveSuperRows().filter(function (r) { return r._src === 'exp'; });
-        if (!rows.length) { alert('Немає витрат для експорту.'); return; }
-        const headers = ['Тип', 'Назва', 'Сума €', 'Оплата', 'Вага_г', 'Час'];
-        const lines = rows.map(function (r) {
-          return [r.kind, r.name, Number(r.amount).toFixed(2), r.method, r.weight || '', r.timeStr].map(csvEscape).join(';');
-        });
-        const bom = String.fromCharCode(0xFEFF);
-        downloadTextFile(
-          'h2_expenses_' + stampNow() + '.csv',
-          bom + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10)),
-          'text/csv;charset=utf-8;'
-        );
-      } catch (err) {
-        alert('Помилка експорту витрат: ' + (err && err.message ? err.message : String(err)));
-      }
-    }
+    function loadDealsFromFile(inputEl) { loadSessionFromPdf(inputEl); }
+    function loadExpensesFromFile(inputEl) { loadSessionFromPdf(inputEl); }
+    function exportCombinedSessionToCSV() { alert('CSV вимкнено. Натисни «PDF».'); }
+    function exportCombinedSessionToJSON() { alert('JSON вимкнено. Натисни «PDF».'); }
+    function exportExpensesToCSV() { alert('CSV вимкнено. Натисни «PDF».'); }
 
     // Archive master sort
     function sortArchiveMaster(key) {
