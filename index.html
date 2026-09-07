@@ -3121,9 +3121,15 @@
     function filterArchiveMasterTable() { renderSuperTable(); }
     function renderArchiveMasterTable() { renderSuperTable(); }
 
+
     function downloadTextFile(filename, content, mime) {
       try {
         const blob = new Blob([content], { type: (mime || 'text/plain;charset=utf-8;') });
+        // IE/Edge legacy
+        if (typeof navigator !== 'undefined' && navigator.msSaveOrOpenBlob) {
+          navigator.msSaveOrOpenBlob(blob, filename);
+          return true;
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -3131,169 +3137,150 @@
         a.rel = 'noopener';
         a.style.display = 'none';
         document.body.appendChild(a);
-        setTimeout(function() {
-          try { a.click(); } catch (e1) {}
-          setTimeout(function() {
-            try { document.body.removeChild(a); } catch (e2) {}
-            try { URL.revokeObjectURL(url); } catch (e3) {}
-          }, 2000);
-        }, 50);
+        a.click();
+        setTimeout(function () {
+          try { document.body.removeChild(a); } catch (e) {}
+          try { URL.revokeObjectURL(url); } catch (e) {}
+        }, 2500);
         return true;
       } catch (err) {
         console.error(err);
-        try {
-          // last resort: open in new tab
-          const dataUrl = 'data:' + (mime || 'text/plain') + ',' + encodeURIComponent(content);
-          window.open(dataUrl, '_blank');
-        } catch (e4) {}
         alert('Не вдалося зберегти файл: ' + (err && err.message ? err.message : String(err)));
         return false;
       }
     }
+
     function stampNow() {
       const n = new Date();
-      return `${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}_${String(n.getHours()).padStart(2,'0')}${String(n.getMinutes()).padStart(2,'0')}`;
+      return n.getFullYear()
+        + String(n.getMonth() + 1).padStart(2, '0')
+        + String(n.getDate()).padStart(2, '0')
+        + '_'
+        + String(n.getHours()).padStart(2, '0')
+        + String(n.getMinutes()).padStart(2, '0');
     }
+
     function csvEscape(val) {
       const s = val == null ? '' : String(val);
-      if (/[;"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      if (/[;"\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
       return s;
     }
 
+    /**
+     * Оновити UI з поточних maps БЕЗ перезапису архіву з textarea.
+     * (processData() завжди будує архів лише з rawInput — після імпорту JSON це небезпечно)
+     */
+    function refreshSessionUIFromMaps() {
+      try {
+        if (typeof syncPurchasesFromExpenseTable === 'function') syncPurchasesFromExpenseTable();
+      } catch (e) {}
 
-    /** Завантаження текстового/CSV/JSON файлу в textarea угод і перерахунок */
-    function loadDealsFromFile(inputEl) {
-      const file = inputEl && inputEl.files && inputEl.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          let text = String(reader.result || '');
-          const name = (file.name || '').toLowerCase();
-          // JSON session / archive backup
-          if (name.endsWith('.json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
-            const data = JSON.parse(text);
-            if (data && Array.isArray(data.deals)) {
-                // Повна заміна сесії — без накладання
-                archiveRecordsMap = {};
-                storedRecordsMap = {};
-                clearSessionExpenses();
-                data.deals.forEach(rec => {
-                  const enriched = typeof enrichRecord === 'function' ? enrichRecord(rec) : rec;
-                  if (enriched && enriched.id) archiveRecordsMap[enriched.id] = enriched;
-                });
-                if (data.expenses && Array.isArray(data.expenses)) {
-                  applyExpensesFromRows(data.expenses);
-                }
-                processData();
-                if (typeof renderArchiveView === 'function') renderArchiveView();
-                if (typeof renderSuperTable === 'function') renderSuperTable();
-                alert('JSON сесію завантажено (замінено, без накладання).');
-                inputEl.value = '';
-                return;
-            }
-            if (data && Array.isArray(data.records)) {
-              archiveRecordsMap = {};
-              storedRecordsMap = {};
-              data.records.forEach(rec => {
-                const enriched = typeof enrichRecord === 'function' ? enrichRecord(rec) : rec;
-                if (enriched && enriched.id) archiveRecordsMap[enriched.id] = enriched;
-              });
-              processData();
-              if (typeof renderSuperTable === 'function') renderSuperTable();
-              alert('JSON архів завантажено (замінено).');
-              inputEl.value = '';
-              return;
-            }
-          }
-          const ta = document.getElementById('rawInput');
-          if (ta) ta.value = text;
-          processData();
-          if (typeof TelegramService !== 'undefined' && TelegramService.haptic) TelegramService.haptic('success');
-        } catch (err) {
-          alert('Помилка файлу угод: ' + (err && err.message ? err.message : String(err)));
-        } finally {
-          inputEl.value = '';
+      parsedRecordsGlobal = Object.values(archiveRecordsMap || {}).map(r => {
+        const enriched = typeof enrichRecord === 'function' ? enrichRecord({ ...r }) : r;
+        return {
+          ...enriched,
+          parsedDateObj: parseRecordDateTime(enriched.timeStr || '')
+        };
+      });
+
+      // фільтр сорту в шапці (як у processData)
+      try {
+        const varietySel = document.getElementById('varietySelect');
+        if (varietySel && varietySel.value && varietySel.value !== 'NEW' && varietySel.value !== 'ALL') {
+          const v = varietySel.value;
+          parsedRecordsGlobal = parsedRecordsGlobal.filter(r => r.category === v);
         }
-      };
-      reader.onerror = () => { alert('Не вдалося прочитати файл.'); inputEl.value = ''; };
-      reader.readAsText(file, 'UTF-8');
+      } catch (e) {}
+
+      try { if (typeof renderExpensesView === 'function') renderExpensesView(); } catch (e) {}
+      try { if (typeof renderArchiveView === 'function') renderArchiveView(); } catch (e) {}
+      try { if (typeof renderSuperTable === 'function') renderSuperTable(); } catch (e) {}
+      try {
+        if (activePage === 'page1' && typeof processData === 'function') {
+          // на дашборді — м'який перерахунок KPI з maps, не з порожнього textarea
+          // якщо textarea порожній, не чіпаємо archiveRecordsMap
+          const raw = ((document.getElementById('rawInput') || {}).value || '').trim();
+          if (raw) processData();
+          else {
+            // мінімальний refresh дашборду
+            if (typeof updateDashboardFromRecords === 'function') updateDashboardFromRecords(parsedRecordsGlobal);
+            else if (typeof renderDashboard === 'function') renderDashboard();
+          }
+        }
+      } catch (e) {}
+      try {
+        if (activePage === 'page4' && typeof renderForecastView === 'function') renderForecastView();
+      } catch (e) {}
     }
 
-    /** Завантаження файлу витрат (текст таблиці / CSV / JSON) */
-    function loadExpensesFromFile(inputEl) {
-      const file = inputEl && inputEl.files && inputEl.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          let text = String(reader.result || '');
-          const name = (file.name || '').toLowerCase();
-          if (name.endsWith('.json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
-            const data = JSON.parse(text);
-            const rows = Array.isArray(data) ? data : (data.expenses || data.records || []);
-            if (!rows.length) throw new Error('У JSON немає витрат.');
-            applyExpensesFromRows(rows);
-            renderExpensesView();
-            processData();
-            alert('Витрати з JSON: ' + rows.length);
-            inputEl.value = '';
-            return;
-          }
-          // CSV з нашими заголовками → у plain table text
-          if (name.endsWith('.csv') || text.includes(';')) {
-            text = csvExpensesToTableText(text);
-          }
-          const ta = document.getElementById('rawExpenseInput');
-          if (ta) ta.value = text;
-          processExpenseBulk();
-        } catch (err) {
-          alert('Помилка файлу витрат: ' + (err && err.message ? err.message : String(err)));
-        } finally {
-          inputEl.value = '';
-        }
-      };
-      reader.onerror = () => { alert('Не вдалося прочитати файл.'); inputEl.value = ''; };
-      reader.readAsText(file, 'UTF-8');
+    /** Повний архів (угоди + витрати) БЕЗ фільтра періоду/сорту — для експорту */
+    function getFullArchiveSuperRows() {
+      const rows = [];
+      Object.values(archiveRecordsMap || {}).forEach(r => {
+        const en = typeof enrichRecord === 'function' ? enrichRecord({ ...r }) : r;
+        const t = parseRecordDateTime(en.timeStr || '').getTime() || 0;
+        const card = Number(en.cardAmount) || 0;
+        const revenue = Number(en.dealRevenue) || 0;
+        const profit = Number(en.dealProfit) || 0;
+        const cost = Number(en.dealCost) || 0;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+        rows.push({
+          kind: 'угода',
+          name: en.category || '',
+          detail: en.clientName || '',
+          baseWeight: Number(en.baseGramm) || 0,
+          weight: Number(en.exactGramm) || 0,
+          cost: cost,
+          amount: revenue,
+          profit: profit,
+          margin: margin,
+          method: card > 0 ? 'карта' : 'готівка',
+          note: en.rawDebtText || '',
+          timeStr: en.timeStr || '',
+          timeMs: t,
+          _src: 'deal',
+          _raw: en
+        });
+      });
+      Object.values(expenseHistoryMap || {}).forEach(h => {
+        const delta = Number(h.delta) || Number(h.newAmount) || 0;
+        if (delta <= 0) return;
+        let d = h.createdAt ? new Date(h.createdAt) : parseRecordDateTime(h.timeStr || '');
+        if (!(d instanceof Date) || isNaN(d.getTime())) d = new Date(0);
+        const p = typeof parsePurchaseFromExpenseName === 'function' ? parsePurchaseFromExpenseName(h.name) : null;
+        rows.push({
+          kind: p ? 'закуп' : 'витрата',
+          name: p ? p.variety : (h.name || ''),
+          detail: p ? (p.grams + ' г') : '—',
+          baseWeight: 0,
+          weight: p ? p.grams : 0,
+          cost: delta,
+          amount: delta,
+          profit: 0,
+          margin: 0,
+          method: h.method === 'card' ? 'карта' : 'готівка',
+          note: p ? 'закуп сорту' : '',
+          timeStr: h.timeStr || '',
+          timeMs: d.getTime(),
+          _src: 'exp',
+          _raw: h
+        });
+      });
+      rows.sort((a, b) => (b.timeMs || 0) - (a.timeMs || 0));
+      return rows;
     }
 
-    /** Універсальне завантаження сесії (з супер-таблиці) */
-    function loadSessionFromFile(inputEl) {
-      const file = inputEl && inputEl.files && inputEl.files[0];
-      if (!file) return;
-      const name = (file.name || '').toLowerCase();
-      // JSON combined → deals loader; text/csv expenses-looking → expenses
-      if (name.endsWith('.json')) {
-        loadDealsFromFile(inputEl);
-        return;
-      }
-      // heuristic: if first lines look like expense headers
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = String(reader.result || '');
-        const head = text.slice(0, 200).toLowerCase();
-        if (head.includes('витрат') || head.includes('name') && head.includes('€') || head.includes('обмен') || head.includes('назва')) {
-          // put into expense input
-          const fake = { files: [file], value: '' };
-          // re-read is wasteful — inline:
-          try {
-            let body = text;
-            if (name.endsWith('.csv') || text.includes(';')) body = csvExpensesToTableText(text);
-            const ta = document.getElementById('rawExpenseInput');
-            if (ta) ta.value = body;
-            processExpenseBulk();
-          } catch (err) {
-            alert('Помилка: ' + (err && err.message ? err.message : String(err)));
-          }
-          inputEl.value = '';
-          return;
+    function applySessionDeals(deals) {
+      archiveRecordsMap = {};
+      storedRecordsMap = {};
+      (deals || []).forEach((rec, i) => {
+        let enriched = typeof enrichRecord === 'function' ? enrichRecord({ ...rec }) : { ...rec };
+        if (!enriched.id) {
+          enriched.id = 'IMP_' + i + '_' + String(enriched.clientName || '') + '_' + String(enriched.timeStr || '');
         }
-        const ta = document.getElementById('rawInput');
-        if (ta) ta.value = text;
-        processData();
-        inputEl.value = '';
-      };
-      reader.readAsText(file, 'UTF-8');
+        archiveRecordsMap[enriched.id] = enriched;
+        storedRecordsMap[enriched.id] = enriched;
+      });
     }
 
     function applyExpensesFromRows(rows) {
@@ -3302,14 +3289,93 @@
       customExpenseCategories = {};
       (rows || []).forEach((r, i) => {
         const name = r.name || r.Назва || r.category || '';
-        const amount = Number(r.amount != null ? r.amount : (r['Сума €'] != null ? r['Сума €'] : r.delta)) || 0;
+        const amount = Number(
+          r.amount != null ? r.amount
+            : (r['Сума €'] != null ? r['Сума €']
+              : (r.delta != null ? r.delta : r.Сума))
+        ) || 0;
         let method = r.method || 'cash';
-        if (r.methodLabel === 'карта' || r.Оплата === 'карта') method = 'card';
+        if (r.methodLabel === 'карта' || r.Оплата === 'карта' || method === 'карта') method = 'card';
         if (method !== 'card') method = 'cash';
         const timeStr = r.timeStr || r.Час || r.time || '';
-        if (name && amount > 0) applyExpenseTransaction(name, amount, method, timeStr);
+        if (!name || !(amount > 0)) return;
+        const baseWhen = parseRecordDateTime(timeStr);
+        const when = new Date((baseWhen.getTime() || Date.now()) + i);
+        applyExpenseTransaction(name, amount, method, timeStr, when);
       });
-      rebuildLegacyExpenseCategories();
+      try { rebuildLegacyExpenseCategories(); } catch (e) {}
+      try { syncPurchasesFromExpenseTable(); } catch (e) {}
+    }
+
+    /** CSV супер-таблиці → deals + expenses */
+    function importSuperCsvText(csvText) {
+      const raw = String(csvText || '').replace(/^\uFEFF/, '');
+      const lines = raw.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) throw new Error('Порожній CSV');
+      const delim = lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+      const col = (aliases) => {
+        for (const a of aliases) {
+          const i = headers.findIndex(h => h === a || h.includes(a));
+          if (i >= 0) return i;
+        }
+        return -1;
+      };
+      const iType = col(['тип', 'type', 'типзапису']);
+      const iName = col(['сорт', 'назва', 'name', 'category']);
+      const iClient = col(['клієнт', 'client', 'detail']);
+      const iBase = col(['база']);
+      const iWeight = col(['точна', 'вага', 'weight', 'грам']);
+      const iAmount = col(['сума', 'виручка', 'amount', '€']);
+      const iProfit = col(['прибуток', 'profit']);
+      const iMethod = col(['оплат', 'method']);
+      const iNote = col(['нотат', 'борг', 'note']);
+      const iTime = col(['час', 'time', 'дат']);
+
+      const deals = [];
+      const expenses = [];
+      for (let li = 1; li < lines.length; li++) {
+        const cols = lines[li].split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
+        const type = (iType >= 0 ? cols[iType] : cols[0] || '').toLowerCase();
+        const name = iName >= 0 ? cols[iName] : '';
+        const client = iClient >= 0 ? cols[iClient] : '';
+        const weight = parseFloat(String(iWeight >= 0 ? cols[iWeight] : '0').replace(',', '.')) || 0;
+        const base = parseFloat(String(iBase >= 0 ? cols[iBase] : '0').replace(',', '.')) || 0;
+        const amount = parseFloat(String(iAmount >= 0 ? cols[iAmount] : '0').replace(',', '.')) || 0;
+        const profit = parseFloat(String(iProfit >= 0 ? cols[iProfit] : '0').replace(',', '.')) || 0;
+        const methodRaw = (iMethod >= 0 ? cols[iMethod] : '').toLowerCase();
+        const method = /карта|card/.test(methodRaw) ? 'card' : 'cash';
+        const note = iNote >= 0 ? cols[iNote] : '';
+        const timeStr = iTime >= 0 ? cols[iTime] : '';
+
+        if (type.includes('угод') || type === 'deal') {
+          deals.push({
+            category: name,
+            clientName: client,
+            baseGramm: base || (weight ? weight / 1.1 : 0),
+            exactGramm: weight,
+            dealRevenue: amount,
+            dealProfit: profit,
+            cardAmount: method === 'card' ? amount : 0,
+            rawDebtText: note,
+            timeStr: timeStr,
+            id: 'CSV_DEAL_' + li + '_' + name + '_' + client + '_' + timeStr
+          });
+        } else if (type.includes('закуп') || type.includes('витрат') || type.includes('обмен') || type === 'expense') {
+          // закуп: name + weight grams in name field style "Super Silver 200" if needed
+          let expName = name;
+          if (type.includes('закуп') && weight > 0 && name && !/\d+\s*$/.test(name)) {
+            expName = name + ' ' + weight;
+          }
+          expenses.push({
+            name: expName,
+            amount: amount,
+            method: method,
+            timeStr: timeStr
+          });
+        }
+      }
+      return { deals, expenses };
     }
 
     function csvExpensesToTableText(csv) {
@@ -3318,7 +3384,7 @@
       if (lines.length < 2) return raw;
       const delim = lines[0].includes(';') ? ';' : ',';
       const headers = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
-      const idxName = headers.findIndex(h => ['назва','name','сорт'].includes(h));
+      const idxName = headers.findIndex(h => ['назва', 'name', 'сорт'].includes(h) || h.includes('назв'));
       const idxAmt = headers.findIndex(h => h.includes('сум') || h.includes('€') || h === 'amount');
       const idxTime = headers.findIndex(h => h.includes('час') || h === 'time' || h.includes('дат'));
       const idxPay = headers.findIndex(h => h.includes('оплат') || h === 'method');
@@ -3336,36 +3402,115 @@
       return out.join('\n');
     }
 
+    /** Єдине завантаження файлу для супер-таблиці: JSON / CSV / текст */
+    function loadSessionFromFile(inputEl) {
+      const file = inputEl && inputEl.files && inputEl.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        try {
+          const textContent = String(reader.result || '');
+          const fname = (file.name || '').toLowerCase();
+          const trimmed = textContent.trim();
 
-    function exportExpensesToCSV() {
-      try {
-        const rows = getSuperTableRows().filter(r => r._src === 'exp');
-        if (!rows.length) { alert('Немає витрат для експорту.'); return; }
-        const headers = ['Тип','Назва','Сума €','Оплата','Вага_г','Час'];
-        const lines = rows.map(r => [r.kind, r.name, Number(r.amount).toFixed(2), r.method, r.weight || '', r.timeStr].map(csvEscape).join(';'));
-        downloadTextFile('h2_expenses_' + stampNow() + '.csv', String.fromCharCode(0xFEFF) + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10)), 'text/csv;charset=utf-8;');
-      } catch (err) {
-        alert('Помилка експорту витрат: ' + (err && err.message ? err.message : String(err)));
-      }
+          // --- JSON session ---
+          if (fname.endsWith('.json') || trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            const data = JSON.parse(textContent);
+            if (data && (Array.isArray(data.deals) || Array.isArray(data.expenses) || Array.isArray(data.records))) {
+              const deals = Array.isArray(data.deals) ? data.deals
+                : (Array.isArray(data.records) ? data.records : []);
+              const expenses = Array.isArray(data.expenses) ? data.expenses : [];
+              applySessionDeals(deals);
+              if (expenses.length) applyExpensesFromRows(expenses);
+              else if (typeof clearSessionExpenses === 'function') {
+                // keep expenses only if file had none? replace policy: if key missing, keep; if [] clear
+                if (Object.prototype.hasOwnProperty.call(data, 'expenses')) applyExpensesFromRows([]);
+              }
+              refreshSessionUIFromMaps();
+              alert('Завантажено JSON сесію.\nУгод: ' + deals.length + '\nВитрат: ' + expenses.length);
+              return;
+            }
+            if (Array.isArray(data)) {
+              // array of mixed or deals
+              applySessionDeals(data);
+              refreshSessionUIFromMaps();
+              alert('Завантажено масив записів: ' + data.length);
+              return;
+            }
+            throw new Error('Невідомий формат JSON');
+          }
+
+          // --- CSV (супер-таблиця або витрати) ---
+          if (fname.endsWith('.csv') || textContent.indexOf(';') >= 0) {
+            const head = textContent.slice(0, 280).toLowerCase();
+            if (head.indexOf('тип') >= 0 || head.indexOf('угод') >= 0 || head.indexOf('витрат') >= 0) {
+              const parsed = importSuperCsvText(textContent);
+              applySessionDeals(parsed.deals);
+              applyExpensesFromRows(parsed.expenses);
+              refreshSessionUIFromMaps();
+              alert('CSV супер-таблицю завантажено.\nУгод: ' + parsed.deals.length + '\nВитрат: ' + parsed.expenses.length);
+              return;
+            }
+            // expenses-only csv
+            const body = csvExpensesToTableText(textContent);
+            const ta = document.getElementById('rawExpenseInput');
+            if (ta) ta.value = body;
+            processExpenseBulk();
+            return;
+          }
+
+          // --- plain text journal ---
+          const ta = document.getElementById('rawInput');
+          if (ta) ta.value = textContent;
+          processData();
+          if (typeof renderSuperTable === 'function') renderSuperTable();
+          alert('Текст журналу завантажено і розраховано.');
+        } catch (err) {
+          console.error(err);
+          alert('Помилка завантаження: ' + (err && err.message ? err.message : String(err)));
+        } finally {
+          try { inputEl.value = ''; } catch (e) {}
+        }
+      };
+      reader.onerror = function () {
+        alert('Не вдалося прочитати файл.');
+        try { inputEl.value = ''; } catch (e) {}
+      };
+      reader.readAsText(file, 'UTF-8');
     }
+
+    // aliases
+    function loadDealsFromFile(inputEl) { loadSessionFromFile(inputEl); }
+    function loadExpensesFromFile(inputEl) { loadSessionFromFile(inputEl); }
 
     function exportCombinedSessionToCSV() {
       try {
-        const rows = getSuperTableRows();
-        if (!rows.length) { alert('Немає даних сесії для експорту.'); return; }
-        const headers = ['Тип','Сорт/Назва','Клієнт','База_г','Точна_г','Cost_€','Сума_€','Прибуток_€','Маржа_%','Оплата','Нотатка','Час'];
-        const lines = rows.map(r => [
-          r.kind, r.name, r.detail,
-          r.baseWeight ? Number(r.baseWeight).toFixed(2) : '',
-          r.weight ? Number(r.weight).toFixed(2) : '',
-          Number(r.cost || 0).toFixed(2),
-          Number(r.amount || 0).toFixed(2),
-          r.kind === 'угода' ? Number(r.profit || 0).toFixed(2) : '',
-          r.kind === 'угода' ? Number(r.margin || 0).toFixed(1) : '',
-          r.method, r.note || '', r.timeStr || ''
-        ].map(csvEscape).join(';'));
+        // ВЕСЬ архів, не тільки відфільтрований період
+        const rows = getFullArchiveSuperRows();
+        if (!rows.length) {
+          alert('Немає даних сесії для експорту.\nСпочатку розрахуй угоди та витрати.');
+          return;
+        }
+        const headers = ['Тип', 'Сорт/Назва', 'Клієнт', 'База_г', 'Точна_г', 'Cost_€', 'Сума_€', 'Прибуток_€', 'Маржа_%', 'Оплата', 'Нотатка', 'Час'];
+        const lines = rows.map(function (r) {
+          return [
+            r.kind,
+            r.name,
+            r.detail,
+            r.baseWeight ? Number(r.baseWeight).toFixed(2) : '',
+            r.weight ? Number(r.weight).toFixed(2) : '',
+            Number(r.cost || 0).toFixed(2),
+            Number(r.amount || 0).toFixed(2),
+            r.kind === 'угода' ? Number(r.profit || 0).toFixed(2) : '',
+            r.kind === 'угода' ? Number(r.margin || 0).toFixed(1) : '',
+            r.method,
+            r.note || '',
+            r.timeStr || ''
+          ].map(csvEscape).join(';');
+        });
         const bom = String.fromCharCode(0xFEFF);
-        downloadTextFile('h2_super_' + stampNow() + '.csv', bom + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10)), 'text/csv;charset=utf-8;');
+        const body = bom + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10));
+        downloadTextFile('h2_super_full_' + stampNow() + '.csv', body, 'text/csv;charset=utf-8;');
       } catch (err) {
         console.error(err);
         alert('Помилка CSV: ' + (err && err.message ? err.message : String(err)));
@@ -3374,32 +3519,61 @@
 
     function exportCombinedSessionToJSON() {
       try {
-        const deals = Object.values(archiveRecordsMap || {}).map(r => {
+        const deals = Object.values(archiveRecordsMap || {}).map(function (r) {
           const en = enrichRecord({ ...r });
-          const { parsedDateObj, ...rest } = en;
-          return rest;
+          const copy = { ...en };
+          delete copy.parsedDateObj;
+          return copy;
         });
-        const expenses = Object.values(expenseHistoryMap || {}).map(h => ({
-          id: h.id,
-          name: h.name,
-          amount: Number(h.delta) || Number(h.newAmount) || 0,
-          method: h.method === 'card' ? 'card' : 'cash',
-          timeStr: h.timeStr || '',
-          kind: (typeof parsePurchaseFromExpenseName === 'function' && parsePurchaseFromExpenseName(h.name)) ? 'закуп' : 'витрата',
-          purchase: (typeof parsePurchaseFromExpenseName === 'function') ? parsePurchaseFromExpenseName(h.name) : null
-        }));
+        const expenses = Object.values(expenseHistoryMap || {}).map(function (h) {
+          return {
+            id: h.id,
+            name: h.name,
+            amount: Number(h.delta) || Number(h.newAmount) || 0,
+            method: h.method === 'card' ? 'card' : 'cash',
+            timeStr: h.timeStr || '',
+            kind: (typeof parsePurchaseFromExpenseName === 'function' && parsePurchaseFromExpenseName(h.name)) ? 'закуп' : 'витрата',
+            purchase: (typeof parsePurchaseFromExpenseName === 'function') ? parsePurchaseFromExpenseName(h.name) : null
+          };
+        });
+        if (!deals.length && !expenses.length) {
+          alert('Немає даних сесії для експорту.');
+          return;
+        }
         const payload = {
-          version: 3,
+          version: 4,
           exportedAt: new Date().toISOString(),
           app: 'H2 Engine session',
           deals: deals,
-          expenses: expenses,
-          superRows: getSuperTableRows()
+          expenses: expenses
         };
-        downloadTextFile('h2_session_' + stampNow() + '.json', JSON.stringify(payload, null, 2), 'application/json;charset=utf-8;');
+        downloadTextFile(
+          'h2_session_full_' + stampNow() + '.json',
+          JSON.stringify(payload, null, 2),
+          'application/json;charset=utf-8;'
+        );
       } catch (err) {
         console.error(err);
         alert('Помилка JSON: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    function exportExpensesToCSV() {
+      try {
+        const rows = getFullArchiveSuperRows().filter(function (r) { return r._src === 'exp'; });
+        if (!rows.length) { alert('Немає витрат для експорту.'); return; }
+        const headers = ['Тип', 'Назва', 'Сума €', 'Оплата', 'Вага_г', 'Час'];
+        const lines = rows.map(function (r) {
+          return [r.kind, r.name, Number(r.amount).toFixed(2), r.method, r.weight || '', r.timeStr].map(csvEscape).join(';');
+        });
+        const bom = String.fromCharCode(0xFEFF);
+        downloadTextFile(
+          'h2_expenses_' + stampNow() + '.csv',
+          bom + headers.join(';') + String.fromCharCode(10) + lines.join(String.fromCharCode(10)),
+          'text/csv;charset=utf-8;'
+        );
+      } catch (err) {
+        alert('Помилка експорту витрат: ' + (err && err.message ? err.message : String(err)));
       }
     }
 
