@@ -683,7 +683,7 @@
           <span class="text-[10px] px-2 py-0.5 rounded bg-neonGreen/10 text-neonGreen border border-neonGreen/30 font-mono">→ розрахунок сесії (без збереження)</span>
         </div>
         <p class="text-[10px] text-gray-500">Формати: <code class="text-neonGreen">Імʼя вага € час</code> або таблиця name / gramm / € / time. Перший рядок — сорт. Дані лише в сесії (без збереження).</p>
-        <textarea id="rawInput" class="w-full h-48 p-2.5 bg-brandDark/90 rounded-xl border border-brandBorder text-xs font-mono text-gray-200 focus:outline-none focus:border-neonGreen/50 transition resize-none leading-relaxed" placeholder="Super Silver&#10;name gramm € time&#10;Борис 0 +50долг 24.8 12:00&#10;..."></textarea>
+        <textarea id="rawInput" class="w-full h-28 p-2.5 bg-brandDark/90 rounded-xl border border-brandBorder text-xs font-mono text-gray-200 focus:outline-none focus:border-neonGreen/50 transition resize-none leading-relaxed" placeholder="Super Silver&#10;name gramm € time&#10;Борис 0 +50долг 24.8 12:00&#10;..."></textarea>
         <div class="grid grid-cols-3 gap-2">
           <button type="button" onclick="processData()" class="col-span-2 py-2.5 bg-gradient-to-r from-neonGreen to-emerald-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-neonGreen/20 hover:opacity-95 active:scale-[0.98] transition">Розрахувати</button>
           <button type="button" id="btnClearJournal" onclick="clearInputField()" class="col-span-1 py-2.5 bg-white/5 hover:bg-neonRed/20 text-neonRed border border-neonRed/30 font-semibold text-xs rounded-xl transition active:scale-[0.98]">Скинути</button>
@@ -951,7 +951,7 @@
             Закуп сорту: <code class="text-neonYellow">Super Silver 200</code> + сума € → 200 г на склад.
             Файли завантажуй у <b>супер-таблиці архіву</b>.
           </p>
-          <textarea id="rawExpenseInput" class="w-full h-52 p-2.5 bg-brandDark/90 rounded-xl border border-brandBorder text-xs font-mono text-gray-200 focus:outline-none focus:border-neonRed/50 transition resize-none leading-relaxed" placeholder="Витрати&#10;name&#10;€&#10;time&#10;Super Silver 200&#10;1200&#10;24.8 19:00&#10;Tabak&#10;160&#10;3.9 20:00&#10;Tabak Karte&#10;75&#10;3.9 21:00&#10;..."></textarea>
+          <textarea id="rawExpenseInput" class="w-full h-28 p-2.5 bg-brandDark/90 rounded-xl border border-brandBorder text-xs font-mono text-gray-200 focus:outline-none focus:border-neonRed/50 transition resize-none leading-relaxed" placeholder="Витрати&#10;name&#10;€&#10;time&#10;Super Silver 200&#10;1200&#10;24.8 19:00&#10;Tabak&#10;160&#10;3.9 20:00&#10;Tabak Karte&#10;75&#10;3.9 21:00&#10;..."></textarea>
           <div class="grid grid-cols-3 gap-2">
             <button type="button" onclick="processExpenseBulk()" class="col-span-2 py-2.5 bg-gradient-to-r from-neonRed to-rose-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-neonRed/20 hover:opacity-95 active:scale-[0.98] transition">Розрахувати витрати</button>
             <button type="button" onclick="clearExpenseBulkInput()" class="col-span-1 py-2.5 bg-white/5 hover:bg-neonRed/20 text-neonRed border border-neonRed/30 font-semibold text-xs rounded-xl transition active:scale-[0.98]">Скинути</button>
@@ -1218,6 +1218,18 @@
   </div>
 
   <script>
+    // ============================================================
+    // H2 ENGINE — MODULE MAP (single-file, session-only)
+    // 1) Telegram / theme
+    // 2) Domain: varieties, deals parse, expenses parse
+    // 3) Session state: archiveRecordsMap, expenseHistoryMap
+    // 4) Dashboard: renderDashboardFromArchive() ← always from archive
+    // 5) Archive UI: periods, super-table, import/export
+    // 6) Forecast
+    // Source of truth: archiveRecordsMap + expenseHistoryMap
+    // Journal textarea writes INTO archive only when non-empty + «Розрахувати»
+    // ============================================================
+
     // TELEGRAM SERVICE
     const TelegramService = (() => {
       let tg = null;
@@ -1553,7 +1565,12 @@
         });
       }
 
-      if (pageId === 'page2') renderArchiveView();
+      if (pageId === 'page1') {
+        try {
+          if (typeof renderDashboardFromArchive === 'function') renderDashboardFromArchive();
+          else processData();
+        } catch (e) { console.error(e); }
+      } else if (pageId === 'page2') renderArchiveView();
       else if (pageId === 'page3') renderExpensesView();
       else if (pageId === 'page4') renderForecastView();
 
@@ -3174,40 +3191,14 @@
       try {
         if (typeof syncPurchasesFromExpenseTable === 'function') syncPurchasesFromExpenseTable();
       } catch (e) {}
-
-      parsedRecordsGlobal = Object.values(archiveRecordsMap || {}).map(r => {
-        const enriched = typeof enrichRecord === 'function' ? enrichRecord({ ...r }) : r;
-        return {
-          ...enriched,
-          parsedDateObj: parseRecordDateTime(enriched.timeStr || '')
-        };
-      });
-
-      // фільтр сорту в шапці (як у processData)
+      // Дашборд завжди з архіву (файл або таблиця)
       try {
-        const varietySel = document.getElementById('varietySelect');
-        if (varietySel && varietySel.value && varietySel.value !== 'NEW' && varietySel.value !== 'ALL') {
-          const v = varietySel.value;
-          parsedRecordsGlobal = parsedRecordsGlobal.filter(r => r.category === v);
-        }
-      } catch (e) {}
-
+        if (typeof renderDashboardFromArchive === 'function') renderDashboardFromArchive();
+        else if (typeof processData === 'function') processData();
+      } catch (e) { console.error(e); }
       try { if (typeof renderExpensesView === 'function') renderExpensesView(); } catch (e) {}
       try { if (typeof renderArchiveView === 'function') renderArchiveView(); } catch (e) {}
       try { if (typeof renderSuperTable === 'function') renderSuperTable(); } catch (e) {}
-      try {
-        if (activePage === 'page1' && typeof processData === 'function') {
-          // на дашборді — м'який перерахунок KPI з maps, не з порожнього textarea
-          // якщо textarea порожній, не чіпаємо archiveRecordsMap
-          const raw = ((document.getElementById('rawInput') || {}).value || '').trim();
-          if (raw) processData();
-          else {
-            // мінімальний refresh дашборду
-            if (typeof updateDashboardFromRecords === 'function') updateDashboardFromRecords(parsedRecordsGlobal);
-            else if (typeof renderDashboard === 'function') renderDashboard();
-          }
-        }
-      } catch (e) {}
       try {
         if (activePage === 'page4' && typeof renderForecastView === 'function') renderForecastView();
       } catch (e) {}
@@ -4433,30 +4424,41 @@
       });
     }
 
+    /**
+     * Єдине джерело правди для дашборду = archiveRecordsMap (сесійний архів).
+     * Журнал (textarea) лише ЗАПИСУЄ в архів при «Розрахувати».
+     * Імпорт файлу пише прямо в архів → дашборд бачить усе без textarea.
+     */
     function processData() {
       try {
       const rawText = (document.getElementById('rawInput') || {}).value || '';
-      const newlyParsed = parseLogs(rawText);
+      const trimmed = rawText.trim();
 
-      // 1. Current journal — only what is in the textarea right now (session)
-      storedRecordsMap = {};
-      newlyParsed.forEach(rec => {
-        const enriched = enrichRecord(rec);
-        storedRecordsMap[enriched.id] = enriched;
-      });
+      if (trimmed) {
+        // Журнал не порожній → перерахунок архіву з таблиці угод
+        const newlyParsed = parseLogs(rawText);
+        storedRecordsMap = {};
+        archiveRecordsMap = {};
+        newlyParsed.forEach(rec => {
+          const enriched = enrichRecord(rec);
+          storedRecordsMap[enriched.id] = enriched;
+          archiveRecordsMap[enriched.id] = enriched;
+        });
+      }
+      // якщо textarea порожній — НЕ чіпаємо archiveRecordsMap (імпорт/файл лишається)
 
-      // 2. Архів сесії = повний перерахунок з таблиці журналу (без накопичення / без збереження)
-      archiveRecordsMap = {};
-      newlyParsed.forEach(rec => {
-        const enriched = enrichRecord(rec);
-        archiveRecordsMap[enriched.id] = enriched;
-      });
-
-      // синхрон закупівель зі складу (з витрат типу «Super Silver 200»)
       try { if (typeof syncPurchasesFromExpenseTable === 'function') syncPurchasesFromExpenseTable(); } catch (e) {}
 
-      // Дашборд і архів рахують угоди поточної сесії (з таблиці)
-      parsedRecordsGlobal = Object.values(archiveRecordsMap).map(r => {
+      renderDashboardFromArchive();
+      } catch (err) {
+        console.error('processData error', err);
+        alert('Помилка розрахунку: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    /** Дашборд + KPI + графіки з повного архіву сесії (файл або таблиця) */
+    function renderDashboardFromArchive() {
+      parsedRecordsGlobal = Object.values(archiveRecordsMap || {}).map(r => {
         const enriched = enrichRecord(r);
         return {
           ...enriched,
@@ -4654,16 +4656,8 @@
         renderForecastView();
       }
 
-      if (typeof TelegramService !== 'undefined') {
-        TelegramService.haptic('success');
-      }
-      } catch (err) {
-        console.error('processData failed', err);
-        if (typeof TelegramService !== 'undefined' && TelegramService.showAlert) {
-          TelegramService.showAlert('Помилка розрахунку: ' + (err.message || err));
-        } else {
-          alert('Помилка розрахунку: ' + (err && err.message ? err.message : String(err)));
-        }
+      if (typeof TelegramService !== 'undefined' && TelegramService.haptic) {
+        try { TelegramService.haptic('success'); } catch (e) {}
       }
     }
 
