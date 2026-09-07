@@ -704,7 +704,7 @@
             <button onclick="setArchivePeriod('today')" id="periodBtn_today" class="px-3 py-1.5 rounded-lg text-gray-300 hover:text-white transition">Сьогодні</button>
             <button onclick="setArchivePeriod('3days')" id="periodBtn_3days" class="px-3 py-1.5 rounded-lg text-gray-300 hover:text-white transition">3 дні</button>
             <button onclick="setArchivePeriod('week')" id="periodBtn_week" class="px-3 py-1.5 rounded-lg text-gray-300 hover:text-white transition">Тиждень</button>
-            <button onclick="setArchivePeriod('month')" id="periodBtn_month" class="px-3 py-1.5 rounded-lg text-gray-300 hover:text-white transition">Місяць</button>
+            <button onclick="setArchivePeriod('month')" id="periodBtn_month" class="px-3 py-1.5 rounded-lg text-gray-300 hover:text-white transition">30 днів</button>
             <button onclick="setArchivePeriod('all')" id="periodBtn_all" class="px-3 py-1.5 rounded-lg bg-neonGreen/20 text-neonGreen border border-neonGreen/40 font-bold">Весь час</button>
           </div>
           <div class="flex items-center gap-1.5 bg-brandDark px-2 py-1.5 rounded-xl border border-brandBorder">
@@ -2187,26 +2187,60 @@
       if (activePage === 'page4') renderForecastView();
     }
 
+    function clearSessionExpenses() {
+      expenseCurrentMap = {};
+      expenseHistoryMap = {};
+      customExpenseCategories = {};
+      try {
+        const tea = document.getElementById('rawExpenseInput');
+        if (tea) tea.value = '';
+      } catch (e) {}
+      try {
+        Object.keys(GLOBAL_VARIETIES || {}).forEach(k => {
+          if (GLOBAL_VARIETIES[k]) {
+            GLOBAL_VARIETIES[k].purchasedGrams = 0;
+            GLOBAL_VARIETIES[k]._expPurchaseGrams = 0;
+          }
+        });
+      } catch (e) {}
+    }
+
     function clearArchive() {
-      const count = Object.keys(archiveRecordsMap).length;
-      if (count === 0) {
-        alert('Архів уже порожній.');
+      const dealCount = Object.keys(archiveRecordsMap || {}).length;
+      const expCount = Object.keys(expenseHistoryMap || {}).length;
+      if (dealCount === 0 && expCount === 0) {
+        alert('Сесія вже порожня.');
         return;
       }
-      const ok = confirm(`Очистити архів сесії (${count} угод)?`);
+      const ok = confirm('Очистити супер-таблицю / сесію?\nУгоди: ' + dealCount + '\nВитрати: ' + expCount);
       if (!ok) return;
 
       archiveRecordsMap = {};
-      localStorage.removeItem(`h2_archive_${currentUser}`);
-      if (typeof TelegramService !== 'undefined' && TelegramService.isInsideTelegram()) {
-        try {
-          TelegramService.cloudRemove(`h2_${currentUser}_archive`);
-        } catch (e) {}
-      }
+      storedRecordsMap = {};
+      parsedRecordsGlobal = [];
+      clearSessionExpenses();
+
+      try {
+        const ta = document.getElementById('rawInput');
+        if (ta) ta.value = '';
+      } catch (e) {}
+
+      try {
+        localStorage.removeItem('h2_archive_' + currentUser);
+        localStorage.removeItem('h2_expenses_' + currentUser);
+        localStorage.removeItem('h2_exp_history_' + currentUser);
+        localStorage.removeItem('h2_exp_current_' + currentUser);
+      } catch (e) {}
+
       saveUserData();
-      renderArchiveView();
-      if (activePage === 'page4') renderForecastView();
-      alert('Архів очищено.');
+      try { if (typeof renderExpensesView === 'function') renderExpensesView(); } catch (e) {}
+      try { if (typeof renderSuperTable === 'function') renderSuperTable(); } catch (e) {}
+      try { renderArchiveView(); } catch (e) {}
+      try { processData(); } catch (e) {}
+      if (activePage === 'page4') {
+        try { renderForecastView(); } catch (e) {}
+      }
+      alert('Сесію очищено (угоди + витрати).');
     }
 
     function clearInputField() {
@@ -2654,18 +2688,46 @@
     }
 
     /** Опорна дата архіву = дата найновішої угоди (або зараз, якщо архів порожній) */
+    /** Кінець періоду = поточний день пристрою (ковзні вікна, не календар) */
     function getArchiveAnchorDate(records) {
-      let max = null;
-      (records || []).forEach(r => {
-        let d = r.parsedDateObj;
-        if (!(d instanceof Date) || isNaN(d.getTime())) {
-          d = parseRecordDateTime(r.timeStr || '');
-        }
-        if (d instanceof Date && !isNaN(d.getTime())) {
-          if (!max || d.getTime() > max.getTime()) max = d;
-        }
-      });
-      return max || new Date();
+      return new Date();
+    }
+
+    /**
+     * Ковзні періоди ДО поточного дня:
+     * today=сьогодні, 3days=3 дні, week=7 днів, month=30 днів
+     */
+    function getRollingPeriodRange(period, anchorDate) {
+      const anchor = (anchorDate instanceof Date && !isNaN(anchorDate.getTime())) ? anchorDate : new Date();
+      const end = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+      const startOfToday = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+      const p = period || 'all';
+      if (p === 'all') return { start: null, end: null, startOfToday: startOfToday, endOfDay: end };
+      if (p === 'today') return { start: startOfToday, end: end, startOfToday: startOfToday, endOfDay: end };
+      if (p === '3days') {
+        const s = new Date(startOfToday);
+        s.setDate(s.getDate() - 2);
+        return { start: s, end: end, startOfToday: startOfToday, endOfDay: end };
+      }
+      if (p === 'week') {
+        const s = new Date(startOfToday);
+        s.setDate(s.getDate() - 6);
+        return { start: s, end: end, startOfToday: startOfToday, endOfDay: end };
+      }
+      if (p === 'month') {
+        const s = new Date(startOfToday);
+        s.setDate(s.getDate() - 29);
+        return { start: s, end: end, startOfToday: startOfToday, endOfDay: end };
+      }
+      return { start: null, end: null, startOfToday: startOfToday, endOfDay: end };
+    }
+
+    function isDateInRollingPeriod(dateObj, period, anchorDate) {
+      if (!period || period === 'all') return true;
+      if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return false;
+      const range = getRollingPeriodRange(period, anchorDate);
+      if (!range.start || !range.end) return true;
+      return dateObj >= range.start && dateObj <= range.end;
     }
 
 
@@ -2959,19 +3021,7 @@
         let d = h.createdAt ? new Date(h.createdAt) : parseRecordDateTime(h.timeStr || '');
         if (!(d instanceof Date) || isNaN(d.getTime())) d = new Date(0);
         if (period !== 'all') {
-          const allA = typeof getArchiveRecordsList === 'function' ? getArchiveRecordsList() : [];
-          const anchor = typeof getArchiveAnchorDate === 'function' ? getArchiveAnchorDate(allA) : new Date();
-          const startOfToday = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
-          const endOfDay = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
-          let start = null, end = endOfDay;
-          if (period === 'today') start = startOfToday;
-          else if (period === '3days') { start = new Date(startOfToday); start.setDate(start.getDate() - 2); }
-          else if (period === 'week') { start = new Date(startOfToday); start.setDate(start.getDate() - 6); }
-          else if (period === 'month') {
-            start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
-            end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-          }
-          if (start && (d < start || d > end)) return;
+          if (!isDateInRollingPeriod(d, period, new Date())) return;
         }
         const p = parsePurchaseFromExpenseName(h.name);
         const kind = p ? 'закуп' : 'витрата';
@@ -3124,9 +3174,10 @@
           if (name.endsWith('.json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
             const data = JSON.parse(text);
             if (data && Array.isArray(data.deals)) {
-              // відновити як plain lines у rawInput складно — краще через importArchive
-              if (typeof importArchiveFromFile === 'function') {
-                // synthesize via records map
+                // Повна заміна сесії — без накладання
+                archiveRecordsMap = {};
+                storedRecordsMap = {};
+                clearSessionExpenses();
                 data.deals.forEach(rec => {
                   const enriched = typeof enrichRecord === 'function' ? enrichRecord(rec) : rec;
                   if (enriched && enriched.id) archiveRecordsMap[enriched.id] = enriched;
@@ -3136,18 +3187,21 @@
                 }
                 processData();
                 if (typeof renderArchiveView === 'function') renderArchiveView();
-                alert('JSON сесію завантажено (угоди' + (data.expenses ? ' + витрати' : '') + ').');
+                if (typeof renderSuperTable === 'function') renderSuperTable();
+                alert('JSON сесію завантажено (замінено, без накладання).');
                 inputEl.value = '';
                 return;
-              }
             }
             if (data && Array.isArray(data.records)) {
+              archiveRecordsMap = {};
+              storedRecordsMap = {};
               data.records.forEach(rec => {
                 const enriched = typeof enrichRecord === 'function' ? enrichRecord(rec) : rec;
                 if (enriched && enriched.id) archiveRecordsMap[enriched.id] = enriched;
               });
               processData();
-              alert('JSON архів завантажено.');
+              if (typeof renderSuperTable === 'function') renderSuperTable();
+              alert('JSON архів завантажено (замінено).');
               inputEl.value = '';
               return;
             }
@@ -3367,31 +3421,12 @@
       let cash = 0, card = 0;
       const p = period || 'all';
 
-      let start = null, end = null;
-      if (p !== 'all') {
-        const anchor = typeof getArchiveAnchorDate === 'function'
-          ? getArchiveAnchorDate(allArchive && allArchive.length ? allArchive : hist.map(h => ({
-              parsedDateObj: h.createdAt ? new Date(h.createdAt) : parseRecordDateTime(h.timeStr || ''),
-              timeStr: h.timeStr
-            })))
-          : new Date();
-        const startOfToday = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
-        const endOfDay = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
-        if (p === 'today') {
-          start = startOfToday; end = endOfDay;
-        } else if (p === '3days') {
-          start = new Date(startOfToday); start.setDate(start.getDate() - 2); end = endOfDay;
-        } else if (p === 'week') {
-          start = new Date(startOfToday); start.setDate(start.getDate() - 6); end = endOfDay;
-        } else if (p === 'month') {
-          start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
-          end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-        }
-      }
+      const range = getRollingPeriodRange(p, new Date());
+      const start = range.start;
+      const end = range.end;
 
       hist.forEach(h => {
         const delta = Number(h.delta);
-        // враховуємо лише додатні витрати (зростання суми); від’ємні — корекції/обнулення
         if (!isFinite(delta) || delta <= 0) return;
         let d = h.createdAt ? new Date(h.createdAt) : null;
         if (!(d instanceof Date) || isNaN(d.getTime())) d = parseRecordDateTime(h.timeStr || '');
@@ -3410,21 +3445,9 @@
       const hist = Object.values(expenseHistoryMap || {});
       let sum = 0;
       const p = period || 'all';
-      let start = null, end = null;
-      if (p !== 'all') {
-        const anchor = typeof getArchiveAnchorDate === 'function'
-          ? getArchiveAnchorDate(allArchive && allArchive.length ? allArchive : [])
-          : new Date();
-        const startOfToday = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
-        const endOfDay = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
-        if (p === 'today') { start = startOfToday; end = endOfDay; }
-        else if (p === '3days') { start = new Date(startOfToday); start.setDate(start.getDate() - 2); end = endOfDay; }
-        else if (p === 'week') { start = new Date(startOfToday); start.setDate(start.getDate() - 6); end = endOfDay; }
-        else if (p === 'month') {
-          start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
-          end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-        }
-      }
+      const range = getRollingPeriodRange(p, new Date());
+      const start = range.start;
+      const end = range.end;
       hist.forEach(h => {
         const delta = Number(h.delta);
         if (!isFinite(delta) || delta <= 0) return;
@@ -3665,6 +3688,17 @@
     function clearExpenseBulkInput() {
       const ta = document.getElementById('rawExpenseInput');
       if (ta) ta.value = '';
+      if (typeof clearSessionExpenses === 'function') {
+        clearSessionExpenses();
+      } else {
+        expenseCurrentMap = {};
+        expenseHistoryMap = {};
+        customExpenseCategories = {};
+      }
+      try { renderExpensesView(); } catch (e) {}
+      try { if (typeof renderSuperTable === 'function') renderSuperTable(); } catch (e) {}
+      try { if (typeof renderArchiveView === 'function') renderArchiveView(); } catch (e) {}
+      try { processData(); } catch (e) {}
     }
 
     /** Додати одну транзакцію витрати (additive) + запис в історію */
@@ -3739,8 +3773,11 @@
 
       let ok = 0;
       let cashSum = 0, cardSum = 0;
-      parsed.forEach(e => {
-        if (applyExpenseTransaction(e.name, e.amount, e.method, e.timeStr)) {
+      parsed.forEach((e, idx) => {
+        // унікальний час-якір щоб рядки не злипались в один histId
+        const baseWhen = parseRecordDateTime(e.timeStr || '');
+        const when = new Date((baseWhen.getTime() || Date.now()) + idx);
+        if (applyExpenseTransaction(e.name, e.amount, e.method, e.timeStr, when)) {
           ok += 1;
           if (e.method === 'card') cardSum += e.amount;
           else cashSum += e.amount;
@@ -4987,7 +5024,7 @@
         today: 'Сьогодні',
         '3days': 'Останні 3 дні',
         week: 'Останні 7 днів',
-        month: 'Місяць',
+        month: '30 днів',
         all: 'Весь час'
       };
       return map[period] || 'Весь час';
@@ -5073,32 +5110,14 @@
 
       let list = allArchive;
       if (period !== 'all') {
-        // Якір = остання угода в архіві (не «годинник телефону»)
+        // Ковзні вікна до ПОТОЧНОГО дня (не календарний місяць/тиждень)
         const anchor = getArchiveAnchorDate(allArchive);
-        const endOfDay = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
-        const startOfToday = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
-
-        const start3 = new Date(startOfToday);
-        start3.setDate(start3.getDate() - 2);
-
-        const start7 = new Date(startOfToday);
-        start7.setDate(start7.getDate() - 6);
-
-        const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
-        const monthEnd = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-
         list = allArchive.filter(r => {
           let d = r.parsedDateObj;
           if (!(d instanceof Date) || isNaN(d.getTime())) {
             d = parseRecordDateTime(r.timeStr || '');
           }
-          if (!(d instanceof Date) || isNaN(d.getTime())) return false;
-
-          if (period === 'today') return d >= startOfToday && d <= endOfDay;
-          if (period === '3days') return d >= start3 && d <= endOfDay;
-          if (period === 'week') return d >= start7 && d <= endOfDay;
-          if (period === 'month') return d >= monthStart && d <= monthEnd;
-          return true;
+          return isDateInRollingPeriod(d, period, anchor);
         });
       }
 
@@ -5144,24 +5163,7 @@
         filteredPurchases = allPurchases.filter(p => {
           let d = p.parsedDateObj;
           if (!(d instanceof Date) || isNaN(d.getTime())) d = parseRecordDateTime(p.timeStr || '');
-          if (!(d instanceof Date) || isNaN(d.getTime())) return false;
-          // повторно використати межі через anchor угод або власний
-          const a = getArchiveAnchorDate(allArchive.length ? allArchive : allPurchases.map(x => ({ parsedDateObj: x.parsedDateObj, timeStr: x.timeStr })));
-          const startOfDay = new Date(a.getFullYear(), a.getMonth(), a.getDate(), 0, 0, 0, 0);
-          const endOfDay = new Date(a.getFullYear(), a.getMonth(), a.getDate(), 23, 59, 59, 999);
-          let weekStart = getMonday(new Date(a));
-          weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate(), 0, 0, 0, 0);
-          const monthStart = new Date(a.getFullYear(), a.getMonth(), 1, 0, 0, 0, 0);
-          const monthEnd = new Date(a.getFullYear(), a.getMonth() + 1, 0, 23, 59, 59, 999);
-          const yearStart = new Date(a.getFullYear(), 0, 1, 0, 0, 0, 0);
-          const yearEnd = new Date(a.getFullYear(), 11, 31, 23, 59, 59, 999);
-          const start3 = new Date(startOfDay); start3.setDate(start3.getDate() - 2);
-          const start7 = new Date(startOfDay); start7.setDate(start7.getDate() - 6);
-          if (period === 'today') return d >= startOfDay && d <= endOfDay;
-          if (period === '3days') return d >= start3 && d <= endOfDay;
-          if (period === 'week') return d >= start7 && d <= endOfDay;
-          if (period === 'month') return d >= monthStart && d <= monthEnd;
-          return true;
+          return isDateInRollingPeriod(d, period, new Date());
         });
       }
       const purCost = filteredPurchases.reduce((s, p) => s + (Number(p.totalCost) || 0), 0);
