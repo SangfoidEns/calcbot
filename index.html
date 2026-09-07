@@ -265,6 +265,90 @@
     .hm-current-time { border: 1px solid #38BDF8 !important; box-shadow: 0 0 8px rgba(56, 189, 248, 0.55); z-index: 20; animation: pulseGlow 1.8s infinite alternate; }
 
     @keyframes pulseGlow { 0% { box-shadow: 0 0 3px #38BDF8; } 100% { box-shadow: 0 0 10px #38BDF8, inset 0 0 4px #38BDF8; } }
+
+    /* ===== Alert banners ===== */
+    #dealAlertBanner {
+      opacity: 0;
+      transform: translate(-50%, -120%) scale(0.92);
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+    #dealAlertBanner.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+      pointer-events: auto;
+      animation: bannerGlow 1.6s ease-in-out infinite alternate;
+    }
+    #dealAlertBanner.is-hiding {
+      opacity: 0;
+      transform: translate(-50%, -120%) scale(0.92);
+      pointer-events: none;
+      animation: none;
+    }
+    @keyframes bannerGlow {
+      0% { box-shadow: 0 0 12px rgba(250, 204, 21, 0.25), 0 8px 32px rgba(0,0,0,0.35); border-color: rgba(250, 204, 21, 0.45); }
+      100% { box-shadow: 0 0 28px rgba(250, 204, 21, 0.55), 0 8px 40px rgba(0,0,0,0.4); border-color: rgba(250, 204, 21, 0.85); }
+    }
+    #dealAlertBanner .banner-shimmer {
+      position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(105deg, transparent 40%, rgba(250,204,21,0.12) 50%, transparent 60%);
+      background-size: 200% 100%;
+      animation: bannerShimmer 2.4s linear infinite;
+    }
+    @keyframes bannerShimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    #dealAlertBanner .banner-icon {
+      width: 2.25rem; height: 2.25rem; border-radius: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(250, 204, 21, 0.15);
+      border: 1px solid rgba(250, 204, 21, 0.4);
+      animation: iconPulse 1.2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes iconPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(250,204,21,0.35); }
+      50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(250,204,21,0); }
+    }
+    #dealAlertBanner .banner-progress {
+      position: absolute; left: 0; bottom: 0; height: 3px;
+      width: 100%; background: rgba(250,204,21,0.15);
+    }
+    #dealAlertBanner .banner-progress > i {
+      display: block; height: 100%; width: 100%;
+      background: linear-gradient(90deg, #FACC15, #FDE68A, #FACC15);
+      background-size: 200% 100%;
+      animation: progressPulse 1.8s linear infinite;
+      transform-origin: left center;
+    }
+    @keyframes progressPulse {
+      0% { opacity: 0.55; filter: brightness(0.9); }
+      50% { opacity: 1; filter: brightness(1.25); }
+      100% { opacity: 0.55; filter: brightness(0.9); }
+    }
+    #dealAlertBanner .banner-close {
+      width: 1.75rem; height: 1.75rem; border-radius: 999px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: background 0.2s, transform 0.15s, color 0.2s;
+    }
+    #dealAlertBanner .banner-close:hover {
+      background: rgba(251, 113, 133, 0.2);
+      border-color: rgba(251, 113, 133, 0.45);
+      color: #FB7185;
+      transform: scale(1.08);
+    }
+    html.light #dealAlertBanner {
+      background: rgba(255,255,255,0.92) !important;
+      color: #0F172A;
+    }
+    html.light #dealAlertBanner #dealAlertText { color: #334155 !important; }
+
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
@@ -388,19 +472,32 @@
       <!-- Settings row -->
       <div class="flex flex-wrap gap-2 items-center justify-between">
 
-        <div class="flex flex-wrap items-center gap-2 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/10">
-          <span class="text-[11px] text-gray-400 font-semibold">Сорт</span>
-          <select id="varietySelect" onchange="onVarietyChange(this.value)" class="bg-transparent text-xs text-neonGreen font-bold focus:outline-none cursor-pointer" title="Фільтрує дашборд і таблиці"></select>
+        <div class="flex flex-wrap items-center gap-2 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/10 text-[11px] text-gray-400">
+          <span class="text-neonGreen font-semibold">H2</span>
           <span class="text-gray-600">·</span>
-          <span class="text-[11px] text-gray-400 font-semibold">€/100г</span>
-          <input type="number" id="costPer100gInput" onchange="updateVarietyData()" class="w-14 bg-black/30 border border-white/10 rounded-lg px-1.5 py-0.5 text-xs text-white font-mono focus:outline-none focus:border-neonGreen/50" value="600" step="1" />
-          <span class="text-gray-600">·</span>
-          <span class="text-[11px] text-gray-400 font-semibold">Склад</span>
-          <input type="number" id="purchasedGramsInput" onchange="updateVarietyData()" class="w-14 bg-black/30 border border-white/10 rounded-lg px-1.5 py-0.5 text-xs text-neonYellow font-mono focus:outline-none focus:border-neonYellow/50" value="0" step="1" />
+          <span id="headerQuickStats" class="font-mono text-gray-300">—</span>
         </div>
+        <!-- hidden compat for variety cost inputs (driven from super-table toolbar) -->
+        <select id="varietySelect" class="hidden" onchange="onVarietyChange(this.value)"><option value="ALL">ALL</option></select>
+        <input type="number" id="costPer100gInput" class="hidden" value="600" />
+        <input type="number" id="purchasedGramsInput" class="hidden" value="0" />
         <p id="liveClock" class="text-[11px] font-mono font-semibold text-neonBlue/90 hidden sm:block">--:--:--</p>
       </div>
     </header>
+
+    
+    <div id="dealAlertBanner" class="fixed top-14 left-1/2 z-[200] max-w-sm w-[92%] px-4 py-3.5 rounded-2xl border border-neonYellow/50 bg-brandCard/95 text-xs" role="alert" aria-live="assertive">
+      <div class="banner-shimmer"></div>
+      <div class="relative flex gap-3 items-start">
+        <div class="banner-icon text-base" aria-hidden="true">⏰</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-neonYellow tracking-wide uppercase text-[10px]">Скоро угода</p>
+          <p id="dealAlertText" class="text-gray-100 mt-1 font-mono text-[11px] leading-snug"></p>
+        </div>
+        <button type="button" onclick="dismissDealAlert()" class="banner-close text-gray-400 text-sm font-bold" title="Вимкнути">×</button>
+      </div>
+      <div class="banner-progress" aria-hidden="true"><i></i></div>
+    </div>
 
     <div id="pagesViewport">
     <!-- PAGE 1 -->
@@ -550,10 +647,11 @@
                 <span class="text-[10px] text-gray-400 font-mono bg-brandDark px-2 py-0.5 rounded border border-brandBorder" id="heatmapPeriodText">--.-- - --.--</span>
               </div>
 
-              <div class="flex items-center gap-1.5">
-                <button onclick="shiftWeek(-1)" class="px-2 py-0.5 text-[10px] font-mono bg-brandDark hover:bg-brandBorder text-gray-300 rounded border border-brandBorder transition">←</button>
-                <button onclick="resetToCurrentWeek()" class="px-2.5 py-0.5 text-[10px] font-semibold bg-neonGreen/10 text-neonGreen hover:bg-neonGreen/20 rounded border border-neonGreen/30 transition">Сьогодні</button>
-                <button onclick="shiftWeek(1)" class="px-2 py-0.5 text-[10px] font-mono bg-brandDark hover:bg-brandBorder text-gray-300 rounded border border-brandBorder transition">→</button>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button" onclick="shiftWeek(-1)" class="px-2 py-0.5 text-[10px] font-mono bg-brandDark hover:bg-brandBorder text-gray-300 rounded border border-brandBorder transition">←</button>
+                <button type="button" onclick="resetToCurrentWeek()" class="px-2.5 py-0.5 text-[10px] font-semibold bg-neonGreen/10 text-neonGreen hover:bg-neonGreen/20 rounded border border-neonGreen/30 transition">Тиждень</button>
+                <button type="button" onclick="shiftWeek(1)" class="px-2 py-0.5 text-[10px] font-mono bg-brandDark hover:bg-brandBorder text-gray-300 rounded border border-brandBorder transition">→</button>
+                <button type="button" id="heatmapAllBtn" onclick="setHeatmapAllTime()" class="px-2.5 py-0.5 text-[10px] font-semibold bg-brandDark text-gray-300 hover:text-white rounded border border-brandBorder transition">Весь час</button>
                 <input type="date" id="heatmapDatePicker" onchange="onDatePicked(this.value)" class="px-1.5 py-0.5 bg-brandDark text-[10px] text-gray-300 border border-brandBorder rounded focus:outline-none">
               </div>
             </div>
@@ -672,28 +770,6 @@
 
       
       <!-- ДВА ТЕРМІНАЛИ: угоди | витрати -->
-      <div class="bg-brandCard/90 p-4 rounded-2xl neon-border space-y-3">
-        <div class="flex justify-between items-center flex-wrap gap-2">
-          <h2 class="text-xs font-bold tracking-wider uppercase text-gray-300">⌨️ Термінали</h2>
-          <span class="text-[10px] px-2 py-0.5 rounded bg-neonGreen/10 text-neonGreen border border-neonGreen/30 font-mono">сесія</span>
-        </div>
-        <div class="flex flex-wrap gap-3 items-start">
-          <div class="space-y-1.5">
-            <p class="text-[10px] font-bold text-neonGreen uppercase">Угоди</p>
-            <textarea id="rawInput" class="w-[15rem] h-24 p-2 bg-brandDark/90 rounded-xl border border-neonGreen/30 text-xs font-mono text-gray-200 focus:outline-none focus:border-neonGreen/60 transition resize-none leading-relaxed" placeholder="кира&#10;3&#10;30&#10;7.9 19:00"></textarea>
-          </div>
-          <div class="space-y-1.5">
-            <p class="text-[10px] font-bold text-neonRed uppercase">Витрати</p>
-            <textarea id="rawExpenseInput" class="w-[15rem] h-24 p-2 bg-brandDark/90 rounded-xl border border-neonRed/30 text-xs font-mono text-gray-200 focus:outline-none focus:border-neonRed/60 transition resize-none leading-relaxed" placeholder="Tabac&#10;12&#10;8.9 15:40"></textarea>
-          </div>
-        </div>
-        <div class="flex flex-wrap gap-2 max-w-[31rem]">
-          <button type="button" onclick="processUnifiedTerminal()" class="flex-1 min-w-[8rem] py-2.5 bg-gradient-to-r from-neonGreen to-emerald-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-neonGreen/20 hover:opacity-95 active:scale-[0.98] transition">Разом</button>
-          <button type="button" onclick="processData()" class="px-3 py-2.5 bg-neonGreen/15 hover:bg-neonGreen/25 text-neonGreen border border-neonGreen/40 font-semibold text-xs rounded-xl transition">Угоди</button>
-          <button type="button" onclick="processExpenseBulk()" class="px-3 py-2.5 bg-neonRed/15 hover:bg-neonRed/25 text-neonRed border border-neonRed/40 font-semibold text-xs rounded-xl transition">Витрати</button>
-          <button type="button" id="btnClearJournal" onclick="clearUnifiedTerminal()" class="px-3 py-2.5 bg-white/5 hover:bg-neonRed/20 text-neonRed border border-neonRed/30 font-semibold text-xs rounded-xl transition">✕</button>
-        </div>
-      </div>
 
       <div class="bg-brandCard/90 p-4 rounded-2xl neon-border flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -861,7 +937,7 @@
         </div>
       </div>
 
-      <!-- СУПЕР-ТАБЛИЦЯ: угоди + витрати -->
+      <!-- СУПЕР-ТАБЛИЦЯ -->
       <div class="bg-brandCard/90 p-5 rounded-2xl neon-border space-y-4">
         <div class="flex justify-between items-center flex-wrap gap-3">
           <div>
@@ -869,16 +945,29 @@
             <p class="text-[11px] text-gray-400">≥50€ · PDF</p>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <select id="archiveVarietyFilter" onchange="onArchiveCategoryFilterChange()" class="px-2.5 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-neonGreen focus:outline-none">
-              <option value="ALL">Усі категорії</option>
+            <select id="archiveVarietyFilter" onchange="onArchiveCategoryFilterChange(); syncVarietySelectFromArchive();" class="px-2.5 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-neonGreen focus:outline-none">
+              <option value="ALL">Усі сорти</option>
             </select>
+            <input type="number" id="superCostInput" onchange="updateVarietyFromSuper()" class="w-16 px-2 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-white font-mono" placeholder="€/100г" title="€/100г" />
+            <input type="number" id="superStockInput" onchange="updateVarietyFromSuper()" class="w-16 px-2 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-neonYellow font-mono" placeholder="Склад г" title="Склад г" />
             <input type="text" id="archiveSearch" onkeyup="renderSuperTable()" placeholder="Пошук..." class="px-3 py-1.5 bg-brandDark rounded-lg border border-brandBorder text-xs text-gray-200 focus:outline-none">
-            <label class="px-3 py-1.5 bg-neonPurple/15 hover:bg-neonPurple/25 text-neonPurple border border-neonPurple/40 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1">
-              📂 PDF
+            <label class="px-3 py-1.5 bg-neonPurple/15 hover:bg-neonPurple/25 text-neonPurple border border-neonPurple/40 rounded-lg text-xs font-bold transition cursor-pointer">📂 PDF
               <input type="file" id="sessionFileInput" accept="application/pdf,.pdf" class="hidden" onchange="loadSessionFromPdf(this)" />
             </label>
             <button type="button" onclick="exportSessionToPdf()" class="px-3 py-1.5 bg-neonGreen/15 hover:bg-neonGreen/25 text-neonGreen border border-neonGreen/40 rounded-lg text-xs font-bold transition">📥 PDF</button>
-            <button type="button" onclick="clearArchive()" class="px-3 py-1.5 bg-neonRed/15 hover:bg-neonRed/25 text-neonRed border border-neonRed/40 rounded-lg text-xs font-bold transition">🗑 Сесія</button>
+            <button type="button" onclick="clearArchive()" class="px-3 py-1.5 bg-neonRed/15 hover:bg-neonRed/25 text-neonRed border border-neonRed/40 rounded-lg text-xs font-bold transition">🗑</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="space-y-1">
+            <p class="text-[10px] font-bold text-neonGreen uppercase">Угоди</p>
+            <textarea id="rawInput" class="w-[14rem] h-24 p-2 bg-brandDark/90 rounded-xl border border-neonGreen/30 text-xs font-mono text-gray-200 focus:outline-none resize-none" placeholder="кира&#10;3&#10;30&#10;7.9 19:00"></textarea>
+            <button type="button" onclick="processData()" class="w-[14rem] py-2 bg-neonGreen/20 hover:bg-neonGreen/30 text-neonGreen border border-neonGreen/40 font-bold text-xs rounded-xl transition">+ Угоди</button>
+          </div>
+          <div class="space-y-1">
+            <p class="text-[10px] font-bold text-neonRed uppercase">Витрати</p>
+            <textarea id="rawExpenseInput" class="w-[14rem] h-24 p-2 bg-brandDark/90 rounded-xl border border-neonRed/30 text-xs font-mono text-gray-200 focus:outline-none resize-none" placeholder="Tabac&#10;12&#10;8.9 15:40"></textarea>
+            <button type="button" onclick="processExpenseBulk()" class="w-[14rem] py-2 bg-neonRed/20 hover:bg-neonRed/30 text-neonRed border border-neonRed/40 font-bold text-xs rounded-xl transition">+ Витрати</button>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -1049,6 +1138,10 @@
               <span class="text-gray-400">Необхідний закуп ваги:</span>
               <span class="text-neonYellow font-bold" id="fcDayStockNeeded">0.00 г</span>
             </div>
+            <div class="flex justify-between items-baseline">
+              <span class="text-xs text-gray-400">Витрати:</span>
+              <span class="text-sm font-bold text-neonRed" id="fcDayExp">0.00 €</span>
+            </div>
           </div>
         </div>
 
@@ -1086,6 +1179,10 @@
               <span class="text-gray-400">Необхідний закуп ваги:</span>
               <span class="text-neonYellow font-bold" id="fcWeekStockNeeded">0.00 г</span>
             </div>
+            <div class="flex justify-between items-baseline">
+              <span class="text-xs text-gray-400">Витрати:</span>
+              <span class="text-sm font-bold text-neonRed" id="fcWeekExp">0.00 €</span>
+            </div>
           </div>
         </div>
 
@@ -1122,6 +1219,10 @@
             <div class="flex justify-between items-baseline border-t border-brandBorder/50 pt-2 text-[11px]">
               <span class="text-gray-400">Необхідний закуп ваги:</span>
               <span class="text-neonYellow font-bold" id="fcMonthStockNeeded">0.00 г</span>
+            </div>
+            <div class="flex justify-between items-baseline">
+              <span class="text-xs text-gray-400">Витрати:</span>
+              <span class="text-sm font-bold text-neonRed" id="fcMonthExp">0.00 €</span>
             </div>
           </div>
         </div>
@@ -1420,17 +1521,19 @@
 
     
     function chartZoomOpts(axis) {
-      // завжди X, навіть якщо викликали з 'xy' / 'y'
       return {
         zoom: {
-          wheel: { enabled: true },
+          wheel: { enabled: true, speed: 0.04 },
           pinch: { enabled: true },
           mode: 'x',
-          scaleMode: 'x'
+          scaleMode: 'x',
+          drag: { enabled: false }
         },
         pan: {
           enabled: true,
-          mode: 'x'
+          mode: 'x',
+          threshold: 12,
+          modifierKey: null
         },
         limits: {
           x: { min: 'original', max: 'original' },
@@ -1475,6 +1578,7 @@
 
     let customExpenseCategories = {};
     let selectedWeekStart = getMonday(new Date());
+    let heatmapMode = 'week'; // week | all
 
     let GLOBAL_VARIETIES = {
       'BANNAN': { costPer100g: 600, purchasedGrams: 0 },
@@ -2375,6 +2479,36 @@
       return { eurPaid, debtNew, debtRepaid, bonusGrams, cardAmount, rawDebtText };
     }
 
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function defaultNowTimeStr() {
+      const w = new Date();
+      return pad2(w.getDate()) + '.' + pad2(w.getMonth() + 1) + '.' + w.getFullYear() + ' ' + pad2(w.getHours()) + ':' + pad2(w.getMinutes());
+    }
+    /** Якщо час/дата неповні — доповнити поточними */
+    function normalizeDealTimeStr(timeStr) {
+      const raw = String(timeStr || '').trim();
+      const now = new Date();
+      if (!raw) return defaultNowTimeStr();
+      // only HH:MM
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(raw)) {
+        return pad2(now.getDate()) + '.' + pad2(now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + raw;
+      }
+      // only date DD.M or DD.MM.YYYY
+      if (/^\d{1,2}\.\d{1,2}(\.\d{2,4})?$/.test(raw)) {
+        return raw + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+      }
+      // has date but no time
+      if (/\d{1,2}\.\d{1,2}/.test(raw) && !/\d{1,2}:\d{2}/.test(raw)) {
+        return raw + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+      }
+      // has time but no date
+      if (/\d{1,2}:\d{2}/.test(raw) && !/\d{1,2}\.\d{1,2}/.test(raw)) {
+        return pad2(now.getDate()) + '.' + pad2(now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + raw;
+      }
+      return raw;
+    }
+
     function parseLogs(rawText) {
       if (!rawText) return [];
       // Нормалізація: markdown-таблиця → plain lines
@@ -2417,9 +2551,10 @@
         }
 
         const baseGramm = parseWeight(rawGramm);
-        const fullTimeStr = (currentDatePrefix && !String(timeStr).includes('.'))
-          ? `${currentDatePrefix} ${timeStr}`
-          : String(timeStr).trim();
+        let fullTimeStr = (currentDatePrefix && !String(timeStr).includes('.'))
+          ? (currentDatePrefix + ' ' + timeStr)
+          : String(timeStr || '').trim();
+        fullTimeStr = normalizeDealTimeStr(fullTimeStr);
         let cat = currentCategory;
         if (!cat || cat === 'UNCATEGORIZED') {
           try {
@@ -3814,7 +3949,7 @@
         if (!timeStr || (!/\d/.test(timeStr) && !String(timeStr).includes(':'))) return;
         const { name, method } = splitExpenseNameAndMethod(rawName);
         if (!name) return;
-        const ts = String(timeStr).trim();
+        const ts = normalizeDealTimeStr(String(timeStr || '').trim());
         out.push({ name, amount, method, timeStr: ts });
       };
 
@@ -4898,6 +5033,7 @@
       renderInteractiveHeatmap();
       calculate25Stats(categories, buyersMap, totalCardAmount, totalNewDebtSum, totalRepaidDebtSum, totalActiveDebt);
 
+      try { updateHeaderQuickStats(); } catch (e) {}
       if (activePage === 'page2') {
         renderArchiveView();
       } else if (activePage === 'page3') {
@@ -5244,12 +5380,13 @@
       if (typeof Chart === 'undefined') return;
       const labelSet = new Set([...Object.keys(categories), ...Object.keys(GLOBAL_VARIETIES)]);
       const labels = Array.from(labelSet);
-      const soldWeights = labels.map(c => (categories[c] ? categories[c].exactGramm : 0));
+      const soldWeights = labels.map(c => (categories[c] ? (categories[c].exactGramm || 0) : 0));
+      const bonusWeights = labels.map(c => (categories[c] ? (categories[c].bonusGrams || 0) : 0));
       const purchasedWeights = labels.map(c => {
         const v = GLOBAL_VARIETIES[c];
         return v && v.purchasedGrams ? Number(v.purchasedGrams) : 0;
       });
-      const remainingWeights = labels.map((c, i) => Math.max(0, purchasedWeights[i] - soldWeights[i]));
+      const remainingWeights = labels.map((c, i) => Math.max(0, purchasedWeights[i] - soldWeights[i] - bonusWeights[i]));
       const revenues = labels.map(c => (categories[c] ? categories[c].revenue : 0));
 
       if (barChart) barChart.destroy();
@@ -5264,7 +5401,7 @@
           labels,
           datasets: [
             {
-              label: 'Розхід (точна вага)',
+              label: 'Розхід (exact)',
               data: soldWeights,
               backgroundColor: 'rgba(0, 255, 136, 0.55)',
               borderColor: '#00FF88',
@@ -5272,7 +5409,15 @@
               borderRadius: 4
             },
             {
-              label: 'Закуп (склад)',
+              label: 'Бонус (факт)',
+              data: bonusWeights,
+              backgroundColor: 'rgba(250, 204, 21, 0.55)',
+              borderColor: '#FACC15',
+              borderWidth: 1.5,
+              borderRadius: 4
+            },
+            {
+              label: 'Закуп',
               data: purchasedWeights,
               backgroundColor: 'rgba(0, 229, 255, 0.35)',
               borderColor: '#00E5FF',
@@ -5359,52 +5504,72 @@
     }
 
     function shiftWeek(offset) {
+      heatmapMode = 'week';
       selectedWeekStart.setDate(selectedWeekStart.getDate() + (offset * 7));
       renderInteractiveHeatmap();
     }
 
     function resetToCurrentWeek() {
+      heatmapMode = 'week';
       selectedWeekStart = getMonday(new Date());
+      renderInteractiveHeatmap();
+    }
+
+    function setHeatmapAllTime() {
+      heatmapMode = 'all';
       renderInteractiveHeatmap();
     }
 
     function onDatePicked(dateVal) {
       if (!dateVal) return;
+      heatmapMode = 'week';
       selectedWeekStart = getMonday(new Date(dateVal));
       renderInteractiveHeatmap();
     }
 
     function renderInteractiveHeatmap() {
       const daysNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
-      const weekStart = new Date(selectedWeekStart);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(selectedWeekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
+      const formatDate = (d) => pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1);
+      const heatSource = typeof getArchiveRecordsList === 'function' ? getArchiveRecordsList() : (parsedRecordsGlobal || []);
+      const now = new Date();
+      let weekStart, weekEnd;
 
-      const formatDate = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
-      document.getElementById('heatmapPeriodText').innerText = `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+      if (heatmapMode === 'all') {
+        // агрегат по днях тижня за весь архів
+        weekStart = null; weekEnd = null;
+        const el = document.getElementById('heatmapPeriodText');
+        if (el) el.innerText = 'Весь час';
+        const btn = document.getElementById('heatmapAllBtn');
+        if (btn) btn.className = 'px-2.5 py-0.5 text-[10px] font-semibold bg-neonGreen/15 text-neonGreen rounded border border-neonGreen/40 transition';
+      } else {
+        weekStart = new Date(selectedWeekStart);
+        weekStart.setHours(0, 0, 0, 0);
+        weekEnd = new Date(selectedWeekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        const el = document.getElementById('heatmapPeriodText');
+        if (el) el.innerText = formatDate(weekStart) + ' - ' + formatDate(weekEnd);
+        const btn = document.getElementById('heatmapAllBtn');
+        if (btn) btn.className = 'px-2.5 py-0.5 text-[10px] font-semibold bg-brandDark text-gray-300 hover:text-white rounded border border-brandBorder transition';
+      }
 
       const gridData = Array.from({ length: 7 }, () => Array(24).fill(0));
-      const now = new Date();
-
-      // Archive + current journal coverage (today included after «Оновити»)
-      const heatSource = typeof getArchiveRecordsList === 'function' ? getArchiveRecordsList() : parsedRecordsGlobal;
       heatSource.forEach(r => {
         const recDate = r.parsedDateObj instanceof Date ? r.parsedDateObj : parseRecordDateTime(r.timeStr || '');
         if (!(recDate instanceof Date) || isNaN(recDate.getTime())) return;
-        if (recDate >= weekStart && recDate <= weekEnd) {
-          let dayIdx = recDate.getDay() - 1;
-          if (dayIdx < 0) dayIdx = 6;
-          const hour = recDate.getHours();
-          gridData[dayIdx][hour] += 1;
+        if (heatmapMode !== 'all') {
+          if (recDate < weekStart || recDate > weekEnd) return;
         }
+        let dayIdx = recDate.getDay() - 1;
+        if (dayIdx < 0) dayIdx = 6;
+        gridData[dayIdx][recDate.getHours()] += 1;
       });
 
       let maxVal = 0;
       gridData.forEach(row => row.forEach(val => { if (val > maxVal) maxVal = val; }));
 
       const container = document.getElementById('heatmapGridRows');
+      if (!container) return;
       container.innerHTML = '';
 
       for (let d = 0; d < 7; d++) {
@@ -5416,7 +5581,9 @@
 
         const labelDiv = document.createElement('div');
         labelDiv.className = 'text-[10px] font-mono text-gray-400 font-bold';
-        labelDiv.innerText = `${daysNames[d]} ${String(dayDate.getDate()).padStart(2, '0')}`;
+        labelDiv.innerText = heatmapMode === 'all'
+          ? daysNames[d]
+          : (daysNames[d] + ' ' + pad2(dayDate.getDate()));
         rowDiv.appendChild(labelDiv);
 
         for (let h = 0; h < 24; h++) {
@@ -6801,6 +6968,11 @@
       setTxt('fcMonthDeals', monthF.deals.toFixed(0));
       setTxt('fcMonthStockNeeded', `${monthF.weight.toFixed(2)} г`);
 
+      const avgExp = averageDailyExpense();
+      setTxt('fcDayExp', (avgExp * 1 * mult).toFixed(2) + ' €');
+      setTxt('fcWeekExp', (avgExp * FORECAST_DAYS_IN_WEEK * mult).toFixed(2) + ' €');
+      setTxt('fcMonthExp', (avgExp * FORECAST_DAYS_IN_MONTH * mult).toFixed(2) + ' €');
+
       if (meta) {
         const eng = model.engine || 'EWMA+DOW';
         const need = model.hw && model.hw.ok ? '' : ' · (HW з 14+ днів історії)';
@@ -7085,6 +7257,172 @@
     }
 
     // INIT ON LOAD
+
+    function syncVarietySelectFromArchive() {
+      const arch = document.getElementById('archiveVarietyFilter');
+      const sel = document.getElementById('varietySelect');
+      if (arch && sel) sel.value = arch.value || 'ALL';
+      const v = (arch && arch.value) || 'ALL';
+      if (v && v !== 'ALL' && v !== 'NEW') {
+        const data = GLOBAL_VARIETIES[v] || { costPer100g: 600, purchasedGrams: 0 };
+        const c = document.getElementById('superCostInput');
+        const s = document.getElementById('superStockInput');
+        if (c) c.value = data.costPer100g || 600;
+        if (s) s.value = data.purchasedGrams || 0;
+        const hc = document.getElementById('costPer100gInput');
+        const hs = document.getElementById('purchasedGramsInput');
+        if (hc) hc.value = data.costPer100g || 600;
+        if (hs) hs.value = data.purchasedGrams || 0;
+      }
+      try { processData(); } catch (e) {}
+    }
+
+    function updateVarietyFromSuper() {
+      const arch = document.getElementById('archiveVarietyFilter');
+      const v = arch && arch.value;
+      if (!v || v === 'ALL' || v === 'NEW') return;
+      if (!GLOBAL_VARIETIES[v]) GLOBAL_VARIETIES[v] = { costPer100g: 600, purchasedGrams: 0 };
+      const c = parseFloat((document.getElementById('superCostInput') || {}).value);
+      const s = parseFloat((document.getElementById('superStockInput') || {}).value);
+      if (!isNaN(c) && c > 0) GLOBAL_VARIETIES[v].costPer100g = c;
+      if (!isNaN(s) && s >= 0) GLOBAL_VARIETIES[v].purchasedGrams = s;
+      try { saveGlobalVarieties(); } catch (e) {}
+      try { recomputeAllRecordsMoney(); } catch (e) {}
+      try { processData(); } catch (e) {}
+    }
+
+    function averageDailyExpense() {
+      const hist = Object.values(expenseHistoryMap || {}).filter(h => (Number(h.delta) || 0) > 0);
+      if (!hist.length) return 0;
+      const byDay = {};
+      hist.forEach(h => {
+        let d = h.createdAt ? new Date(h.createdAt) : parseRecordDateTime(h.timeStr || '');
+        if (!(d instanceof Date) || isNaN(d.getTime())) return;
+        const key = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+        byDay[key] = (byDay[key] || 0) + (Number(h.delta) || 0);
+      });
+      const vals = Object.values(byDay);
+      if (!vals.length) return 0;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
+    }
+
+    // ===== Upcoming deal alerts (in-app, 10 min) =====
+    const __dealAlertOnce = new Set();
+    let __dealAlertTimer = null;
+    let __pagerBeepTimer = null;
+    let __pagerAudioCtx = null;
+    let __pagerAlertActive = false;
+
+    function playPagerBeepOnce() {
+      try {
+        if (!__pagerAudioCtx || __pagerAudioCtx.state === 'closed') {
+          __pagerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const ctx = __pagerAudioCtx;
+        if (ctx.state === 'suspended') {
+          try { ctx.resume(); } catch (e) {}
+        }
+        const now = ctx.currentTime;
+        [0, 0.16].forEach(off => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'square';
+          o.frequency.value = 920;
+          g.gain.setValueAtTime(0.0001, now + off);
+          g.gain.exponentialRampToValueAtTime(0.12, now + off + 0.008);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + off + 0.1);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(now + off);
+          o.stop(now + off + 0.12);
+        });
+      } catch (e) {}
+    }
+
+    function startPagerBeepLoop() {
+      if (__pagerBeepTimer) return;
+      __pagerAlertActive = true;
+      playPagerBeepOnce();
+      // повторювати, доки не вимкнуть сповіщення
+      __pagerBeepTimer = setInterval(() => {
+        if (!__pagerAlertActive) return;
+        playPagerBeepOnce();
+        if (typeof TelegramService !== 'undefined' && TelegramService.haptic) {
+          try { TelegramService.haptic('warning'); } catch (e) {}
+        }
+      }, 1800);
+    }
+
+    function stopPagerBeepLoop() {
+      __pagerAlertActive = false;
+      if (__pagerBeepTimer) {
+        clearInterval(__pagerBeepTimer);
+        __pagerBeepTimer = null;
+      }
+      if (__pagerAudioCtx) {
+        try { __pagerAudioCtx.close(); } catch (e) {}
+        __pagerAudioCtx = null;
+      }
+    }
+
+    function dismissDealAlert() {
+      stopPagerBeepLoop();
+      const b = document.getElementById('dealAlertBanner');
+      if (!b) return;
+      b.classList.remove('is-visible');
+      b.classList.add('is-hiding');
+      setTimeout(() => {
+        b.classList.remove('is-hiding');
+      }, 400);
+    }
+
+    function showDealAlert(text) {
+      const b = document.getElementById('dealAlertBanner');
+      const t = document.getElementById('dealAlertText');
+      if (t) t.innerText = text;
+      if (b) {
+        b.classList.remove('is-hiding');
+        // restart enter animation
+        b.classList.remove('is-visible');
+        void b.offsetWidth;
+        b.classList.add('is-visible');
+      }
+      startPagerBeepLoop();
+      if (typeof TelegramService !== 'undefined' && TelegramService.haptic) {
+        try { TelegramService.haptic('warning'); } catch (e) {}
+      }
+    }
+
+    function checkUpcomingDeals() {
+      const now = Date.now();
+      const windowMs = 10 * 60 * 1000;
+      const list = typeof getArchiveRecordsList === 'function' ? getArchiveRecordsList() : [];
+      list.forEach(r => {
+        const d = r.parsedDateObj instanceof Date ? r.parsedDateObj : parseRecordDateTime(r.timeStr || '');
+        if (!(d instanceof Date) || isNaN(d.getTime())) return;
+        const t = d.getTime();
+        if (t <= now || t > now + windowMs) return;
+        const id = r.id || (r.clientName + '_' + r.timeStr);
+        if (__dealAlertOnce.has(id)) return;
+        __dealAlertOnce.add(id);
+        const mins = Math.max(1, Math.round((t - now) / 60000));
+        showDealAlert((r.clientName || 'Клієнт') + ' · ' + (r.category || '') + ' · через ' + mins + ' хв · ' + (r.timeStr || ''));
+      });
+    }
+
+    function startDealAlertWatcher() {
+      if (__dealAlertTimer) return;
+      checkUpcomingDeals();
+      __dealAlertTimer = setInterval(checkUpcomingDeals, 30000);
+    }
+
+    function updateHeaderQuickStats() {
+      const el = document.getElementById('headerQuickStats');
+      if (!el) return;
+      const deals = Object.keys(archiveRecordsMap || {}).length;
+      const exp = Object.values(expenseHistoryMap || {}).reduce((s, h) => s + (Number(h.delta) > 0 ? Number(h.delta) : 0), 0);
+      el.innerText = deals + ' угод · витр. ' + exp.toFixed(0) + '€';
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       applyTelegramThemeGlass();
       updateThemeToggleBtn();
@@ -7095,6 +7433,8 @@
       loadUserData();
       processData();
       initPageSwipe();
+      startDealAlertWatcher();
+      try { updateHeaderQuickStats(); } catch (e) {}
       // system theme change (Safari / desktop)
       try {
         if (window.matchMedia) {
