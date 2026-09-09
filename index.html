@@ -491,12 +491,43 @@
       <div class="relative flex gap-3 items-start">
         <div class="banner-icon text-base" aria-hidden="true">⏰</div>
         <div class="flex-1 min-w-0">
-          <p class="font-bold text-neonYellow tracking-wide uppercase text-[10px]">Скоро угода</p>
-          <p id="dealAlertText" class="text-gray-100 mt-1 font-mono text-[11px] leading-snug"></p>
+          <p class="font-bold text-neonYellow tracking-wide uppercase text-[10px]" id="dealAlertTitle">Скоро угоди</p>
+          <div id="dealAlertText" class="text-gray-100 mt-1 font-mono text-[11px] leading-snug space-y-1 max-h-36 overflow-y-auto"></div>
         </div>
         <button type="button" onclick="dismissDealAlert()" class="banner-close text-gray-400 text-sm font-bold" title="Вимкнути">×</button>
       </div>
       <div class="banner-progress" aria-hidden="true"><i></i></div>
+    </div>
+
+
+    <!-- Edit deal modal -->
+    <div id="editDealModal" class="hidden fixed inset-0 z-[210] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeEditDealModal()"></div>
+      <div class="relative w-full max-w-sm bg-brandCard border border-neonGreen/40 rounded-2xl p-4 shadow-2xl space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-sm font-bold text-neonGreen uppercase tracking-wide">Редагувати угоду</h3>
+          <button type="button" onclick="closeEditDealModal()" class="text-gray-400 hover:text-white font-bold text-lg leading-none">×</button>
+        </div>
+        <input type="hidden" id="editDealId" />
+        <label class="block text-[10px] text-gray-400 uppercase">Імʼя
+          <input id="editDealName" class="mt-1 w-full px-3 py-2 bg-brandDark border border-brandBorder rounded-xl text-sm text-white font-mono focus:outline-none focus:border-neonGreen/50" />
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="block text-[10px] text-gray-400 uppercase">Кількість (г)
+            <input id="editDealQty" type="number" step="0.01" class="mt-1 w-full px-3 py-2 bg-brandDark border border-brandBorder rounded-xl text-sm text-white font-mono focus:outline-none focus:border-neonGreen/50" />
+          </label>
+          <label class="block text-[10px] text-gray-400 uppercase">€
+            <input id="editDealEur" type="number" step="0.01" class="mt-1 w-full px-3 py-2 bg-brandDark border border-brandBorder rounded-xl text-sm text-white font-mono focus:outline-none focus:border-neonGreen/50" />
+          </label>
+        </div>
+        <label class="block text-[10px] text-gray-400 uppercase">Час
+          <input id="editDealTime" class="mt-1 w-full px-3 py-2 bg-brandDark border border-brandBorder rounded-xl text-sm text-white font-mono focus:outline-none focus:border-neonGreen/50" placeholder="7.9 19:00" />
+        </label>
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="saveEditDeal()" class="flex-1 py-2.5 bg-neonGreen/20 hover:bg-neonGreen/30 text-neonGreen border border-neonGreen/40 font-bold text-xs rounded-xl transition">Зберегти</button>
+          <button type="button" onclick="closeEditDealModal()" class="px-4 py-2.5 bg-white/5 text-gray-300 border border-brandBorder font-semibold text-xs rounded-xl transition">Скас.</button>
+        </div>
+      </div>
     </div>
 
     <div id="pagesViewport">
@@ -1367,18 +1398,12 @@
       }
 
       function setupMainButton() {
+        // Розрахунок лише з терміналів у супер-таблиці — MainButton не показуємо
         if (!tg || !tg.MainButton) return;
-
-        tg.MainButton.setText('ОНОВИТИ / РОЗРАХУВАТИ');
-        tg.MainButton.color = '#00FF88';
-        tg.MainButton.textColor = '#000000';
-        tg.MainButton.show();
-        tg.MainButton.enable();
-
-        tg.MainButton.onClick(() => {
-          haptic('medium');
-          processData();
-        });
+        try {
+          tg.MainButton.hide();
+          tg.MainButton.offClick && tg.MainButton.offClick();
+        } catch (e) {}
       }
 
       function haptic(type = 'light') {
@@ -3118,6 +3143,7 @@
         const cost = Number(en.dealCost) || 0;
         const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
         rows.push({
+          id: en.id || r.id || '',
           kind: 'угода',
           name: en.category || '',
           detail: en.clientName || '',
@@ -3225,7 +3251,12 @@
         return '<tr class="' + rowCls + ' transition">' +
           '<td class="p-2 font-bold ' + kindCls + ' whitespace-nowrap">' + r.kind + badge + '</td>' +
           '<td class="p-2 font-semibold text-gray-200">' + r.name + '</td>' +
-          '<td class="p-2 text-gray-300">' + r.detail + '</td>' +
+          '<td class="p-2 text-gray-300">' + (
+            (r._src === 'deal' && r.id)
+              ? ('<button type="button" onclick="openEditDeal(\'' + String(r.id).replace(/\\/g,'\\\\').replace(/'/g, "\\'") + '\')" class="text-left text-neonGreen hover:underline font-semibold">' + String(r.detail || '—').replace(/</g,'&lt;') + '</button>')
+              : String(r.detail || '—')
+          ) + '</td>' +
+
           '<td class="p-2 font-mono text-gray-400">' + (r.baseWeight ? fmt(r.baseWeight) : '—') + '</td>' +
           '<td class="p-2 font-mono text-neonGreen">' + (r.weight ? fmt(r.weight) + ' г' : '—') + '</td>' +
           '<td class="p-2 font-mono text-neonRed">' + fmt(r.cost) + ' €</td>' +
@@ -7375,13 +7406,15 @@
       }, 400);
     }
 
-    function showDealAlert(text) {
+    function showDealAlert(htmlOrText, isHtml) {
       const b = document.getElementById('dealAlertBanner');
       const t = document.getElementById('dealAlertText');
-      if (t) t.innerText = text;
+      if (t) {
+        if (isHtml) t.innerHTML = htmlOrText;
+        else t.textContent = htmlOrText;
+      }
       if (b) {
         b.classList.remove('is-hiding');
-        // restart enter animation
         b.classList.remove('is-visible');
         void b.offsetWidth;
         b.classList.add('is-visible');
@@ -7396,18 +7429,97 @@
       const now = Date.now();
       const windowMs = 10 * 60 * 1000;
       const list = typeof getArchiveRecordsList === 'function' ? getArchiveRecordsList() : [];
+      const upcoming = [];
       list.forEach(r => {
         const d = r.parsedDateObj instanceof Date ? r.parsedDateObj : parseRecordDateTime(r.timeStr || '');
         if (!(d instanceof Date) || isNaN(d.getTime())) return;
         const t = d.getTime();
         if (t <= now || t > now + windowMs) return;
-        const id = r.id || (r.clientName + '_' + r.timeStr);
-        if (__dealAlertOnce.has(id)) return;
-        __dealAlertOnce.add(id);
-        const mins = Math.max(1, Math.round((t - now) / 60000));
-        showDealAlert((r.clientName || 'Клієнт') + ' · ' + (r.category || '') + ' · через ' + mins + ' хв · ' + (r.timeStr || ''));
+        upcoming.push({
+          id: r.id || (String(r.clientName || '') + '_' + String(r.timeStr || '')),
+          clientName: r.clientName || 'Клієнт',
+          category: r.category || '',
+          timeStr: r.timeStr || '',
+          t: t,
+          mins: Math.max(1, Math.round((t - now) / 60000))
+        });
       });
+      if (!upcoming.length) return;
+      upcoming.sort((a, b) => a.t - b.t);
+
+      // якщо кілька угод у найближчій годині — показати всі майбутні в банері
+      const key = upcoming.map(u => u.id).join('|');
+      if (__dealAlertOnce.has(key)) return;
+      __dealAlertOnce.add(key);
+
+      const title = document.getElementById('dealAlertTitle');
+      if (title) title.textContent = upcoming.length > 1 ? ('Скоро угоди · ' + upcoming.length) : 'Скоро угода';
+
+      const lines = upcoming.map(u =>
+        '<div class="border-b border-white/5 pb-1 last:border-0">' +
+          '<span class="text-neonGreen font-semibold">' + String(u.clientName).replace(/</g,'&lt;') + '</span>' +
+          ' · <span class="text-gray-300">' + String(u.category).replace(/</g,'&lt;') + '</span>' +
+          ' · <span class="text-neonYellow">через ' + u.mins + ' хв</span>' +
+          ' · <span class="text-gray-400">' + String(u.timeStr).replace(/</g,'&lt;') + '</span>' +
+        '</div>'
+      ).join('');
+      showDealAlert(lines, true);
     }
+
+    function openEditDeal(id) {
+      const r = (archiveRecordsMap && archiveRecordsMap[id]) || (storedRecordsMap && storedRecordsMap[id]);
+      if (!r) { alert('Угоду не знайдено'); return; }
+      const modal = document.getElementById('editDealModal');
+      document.getElementById('editDealId').value = id;
+      document.getElementById('editDealName').value = r.clientName || '';
+      document.getElementById('editDealQty').value = (Number(r.baseGramm) || 0);
+      const euro = (Number(r.eurPaid) || 0) + (Number(r.cardAmount) || 0) + (Number(r.debtNew) || 0);
+      document.getElementById('editDealEur').value = euro || (Number(r.dealRevenue) || 0);
+      document.getElementById('editDealTime').value = r.timeStr || '';
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeEditDealModal() {
+      const modal = document.getElementById('editDealModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function saveEditDeal() {
+      const id = (document.getElementById('editDealId') || {}).value;
+      if (!id) return;
+      const r = archiveRecordsMap[id] || storedRecordsMap[id];
+      if (!r) { alert('Угоду не знайдено'); return; }
+
+      const name = String((document.getElementById('editDealName') || {}).value || '').trim();
+      const qty = parseFloat(String((document.getElementById('editDealQty') || {}).value || '').replace(',', '.'));
+      const eur = parseFloat(String((document.getElementById('editDealEur') || {}).value || '').replace(',', '.'));
+      let timeStr = String((document.getElementById('editDealTime') || {}).value || '').trim();
+      if (!name) { alert('Вкажи імʼя'); return; }
+      if (isNaN(qty) || qty < 0) { alert('Вкажи кількість'); return; }
+      if (isNaN(eur) || eur < 0) { alert('Вкажи €'); return; }
+      if (typeof normalizeDealTimeStr === 'function') timeStr = normalizeDealTimeStr(timeStr);
+
+      r.clientName = name;
+      r.baseGramm = qty;
+      r.rawGramm = String(qty);
+      r.eurPaid = eur;
+      r.cardAmount = 0;
+      r.debtNew = 0;
+      r.debtRepaid = Number(r.debtRepaid) || 0;
+      r.rawMoney = String(eur);
+      r.rawDebtText = '';
+      r.timeStr = timeStr;
+
+      const enriched = enrichRecord(r);
+      archiveRecordsMap[id] = enriched;
+      if (storedRecordsMap[id]) storedRecordsMap[id] = enriched;
+
+      closeEditDealModal();
+      try { renderDashboardFromArchive(); } catch (e) {}
+      try { renderSuperTable(); } catch (e) {}
+      try { renderArchiveView(); } catch (e) {}
+    }
+
 
     function startDealAlertWatcher() {
       if (__dealAlertTimer) return;
